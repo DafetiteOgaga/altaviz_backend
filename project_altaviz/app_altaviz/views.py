@@ -7,7 +7,7 @@ from .serializers import *
 
 @api_view(['GET', 'POST'])
 def home(request):
-    return Response({"home": "welcome home from django server"}, status=status.HTTP_200_OK)
+    return Response({"home": "welcome home from django server. This information is from the backend server"}, status=status.HTTP_200_OK)
 
 # @api_view(['GET', 'POST'])
 # def menu_list(request):
