@@ -16,8 +16,16 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from django.conf import settings
+from django.conf.urls.static import static
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('', include('app_products.urls')),     # For app_products configuration
+    path('', include('app_contactus.urls')),     # For app_contactus configuration
+    path('', include('app_users.urls')),     # For app_users configuration
     path('', include('app_altaviz.urls')),     # For app_altaviz configuration
-]
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+# if settings.DEBUG:  # Only serve media files in development
+#     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
