@@ -20,8 +20,11 @@ class User(AbstractUser):
 	username = models.CharField(max_length=15, unique=True)
 	# username = None
 	phone = models.CharField(null=True, blank=True, max_length=15)
-	phone_2 = models.CharField(null=True, blank=True, max_length=15)
-	phone_3 = models.CharField(null=True, blank=True, max_length=15)
+	wphone = models.CharField(max_length=15)
+	phone3 = models.CharField(null=True, blank=True, max_length=15)
+	address = models.CharField(max_length=200)
+	department = models.CharField(null=True, blank=True, max_length=50)
+	deliveries = models.IntegerField(default=0)
 	# website = models.URLField(max_length=200, null=True, blank=True)
 	profile_picture = models.ImageField(upload_to=unique_profile_pic, null=True, blank=True, default='profile_pictures/placeholder.png')
 	# number_of_articles = models.ForeignKey(null=True, blank=True,)
@@ -29,8 +32,8 @@ class User(AbstractUser):
 	aboutme = models.TextField()
 	# profile_picture = None
 
-	groups = models.ManyToManyField(Group, related_name='custom_user_set', blank=True)
-	user_permissions = models.ManyToManyField(Permission, related_name='custom_user_set', blank=True)
+	# groups = models.ManyToManyField(Group, related_name='custom_user_set', blank=True)
+	# user_permissions = models.ManyToManyField(Permission, related_name='custom_user_set', blank=True)
 
 	USERNAME_FIELD = 'email'
 	REQUIRED_FIELDS = []
