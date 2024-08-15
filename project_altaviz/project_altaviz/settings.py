@@ -38,6 +38,13 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'app_requests_and_posts',		# <- added startapp here
+    'app_inventory',		# <- added startapp here
+    'app_bank',		# <- added startapp here
+    'app_help_desk',		# <- added startapp here
+    'app_supervisor',		# <- added startapp here
+    'app_engineer',		# <- added startapp here
+    'app_fault',		# <- added startapp here
     'app_products',		# <- added startapp here
     'app_contactus',		# <- added startapp here
     'app_users',		# <- added startapp here
@@ -135,3 +142,5 @@ CORS_ALLOW_ALL_ORIGINS = True
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+AUTH_USER_MODEL = 'app_users.User'
