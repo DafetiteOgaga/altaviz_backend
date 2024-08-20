@@ -4,6 +4,7 @@ from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.utils import timezone
 import os, uuid, io
 from PIL import Image
+from app_department.models import Department
 # from django.conf import settings
 
 # Create your models here.
@@ -17,19 +18,24 @@ def unique_profile_pic(instance, filename):
 class User(AbstractUser):
 	middle_name = models.CharField(max_length=100, null=True, blank=True)
 	email = models.EmailField(max_length=200, unique=True)
-	username = models.CharField(max_length=15, unique=True)
+	# username = models.CharField(max_length=15, unique=True)
+	username = models.CharField(max_length=30, null=True, blank=True) # making it optional
+	password = models.CharField(max_length=128)
 	# username = None
-	phone = models.CharField(null=True, blank=True, max_length=15)
+	phone = models.CharField(max_length=15)
 	wphone = models.CharField(max_length=15)
-	phone3 = models.CharField(null=True, blank=True, max_length=15)
+	# phone3 = models.CharField(null=True, blank=True, max_length=15)
 	address = models.CharField(max_length=200)
-	department = models.CharField(null=True, blank=True, max_length=50)
+	department = models.ForeignKey(Department, on_delete=models.PROTECT, related_name="departments")
 	deliveries = models.IntegerField(default=0)
+	pendings = models.IntegerField(default=0)
 	# website = models.URLField(max_length=200, null=True, blank=True)
 	profile_picture = models.ImageField(upload_to=unique_profile_pic, null=True, blank=True, default='profile_pictures/placeholder.png')
 	# number_of_articles = models.ForeignKey(null=True, blank=True,)
 	# rating = models.ForeignKey(null=True, blank=True)
-	aboutme = models.TextField()
+	aboutme = models.TextField(null=True, blank=True)
+	is_deleted = models.BooleanField(default=False)
+
 	# profile_picture = None
 
 	# groups = models.ManyToManyField(Group, related_name='custom_user_set', blank=True)
@@ -38,7 +44,11 @@ class User(AbstractUser):
 	USERNAME_FIELD = 'email'
 	REQUIRED_FIELDS = []
 	def __str__(self):
-		return self.username
+		return f'{self.first_name if self.first_name else self.email}'
+
+	def delete(self):
+		self.is_deleted = True
+		self.save()
 
 	def save(self, *args, **kwargs):
 		print('entering save method ###### 1')
