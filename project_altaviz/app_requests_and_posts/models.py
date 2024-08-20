@@ -4,7 +4,7 @@ from app_inventory.models import *
 from django.db.models import F
 
 # Create your models here.
-class Post_Part(models.Model):
+class PostPart(models.Model):
 	name = models.ForeignKey(Part, on_delete=models.PROTECT, related_name="post_parts")
 	quantity_posted = models.IntegerField()
 	# total_quantity = models.IntegerField()
@@ -18,7 +18,7 @@ class Post_Part(models.Model):
 			self.name.save(update_fields=["total_quantity"])
 		super().save(*args, **kwargs)
 
-class Post_Component(models.Model):
+class PostComponent(models.Model):
 	name = models.ForeignKey(Component, on_delete=models.PROTECT, related_name="post_components")
 	quantity_posted = models.IntegerField()
 	# total_quantity = models.IntegerField()
@@ -33,7 +33,7 @@ class Post_Component(models.Model):
 			self.name.save(update_fields=["total_quantity"])
 		super().save(*args, **kwargs)
 
-class Request_Part(models.Model):
+class RequestPart(models.Model):
 	name = models.ForeignKey(Part, on_delete=models.PROTECT, related_name="request_parts")
 	quantity_requested = models.IntegerField()
 	user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
@@ -45,7 +45,7 @@ class Request_Part(models.Model):
 			self.name.save(update_fields=["total_quantity"])
 		super().save(*args, **kwargs)
 
-class Request_Component(models.Model):
+class RequestComponent(models.Model):
 	name = models.ForeignKey(Component, on_delete=models.PROTECT, related_name="request_components")
 	quantity_requested = models.IntegerField()
 	user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
