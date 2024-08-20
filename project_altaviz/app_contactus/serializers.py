@@ -4,5 +4,5 @@ from .models import *
 # Create your serializers here.
 class ContactUserSerializer(serializers.ModelSerializer):
     class Meta:
-        model = ContactUser
+        model = ContactUs
         fields = ['name', 'email', 'message']
