@@ -9,15 +9,15 @@ from .serializers import *
 @api_view(['GET', 'POST'])
 def product(request, pk=None):
 	if request.method == 'POST':
-		print('payload:', request.data)
+		print('PRODUCT payload:', request.data)
 		serializer = ProductSerializer(data=request.data)
 		if serializer.is_valid():
 			serializer.save()
-			product_details = Product.objects.all()
-			print('###################### product (post) ##########################')
+			# product_details = Product.objects.all()
+			# print('###################### product (post) ##########################')
 			# for i, obj in enumerate(product_details):
 			# 	print(f'{i+1}. {obj.title}')
-			print('###################### end product (post) ##########################')
+			# print('###################### end product (post) ##########################')
 			return Response(serializer.data, status=status.HTTP_201_CREATED)
 		print(f'serializer.errors: {serializer.errors}')
 		return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -26,19 +26,19 @@ def product(request, pk=None):
 		if pk:
 			product_details = get_object_or_404(Product.objects.select_related('description').prefetch_related('description__features', 'description__benefits'), pk=pk)
 			# desc = product_details.description.get(pk=pk)
-			print('###################### product pk (get) ##########################')
+			# print('###################### product pk (get) ##########################')
 			# [print(f'{i+1}. {obj.title}') for i, obj in enumerate(product_details)]
-			print('######################')
+			# print('######################')
 			# [print(f'{i+1}. {obj.about[:10]}') for i, obj in enumerate(desc)]
-			print('###################### end product pk (get) ##########################')
+			# print('###################### end product pk (get) ##########################')
 			serializer = ProductSerializer(product_details, context={'request': request})
 		else:
 			product_details = Product.objects.select_related('description').prefetch_related('description__features', 'description__benefits').all()
 			print(f'Product obj: {product_details}')
-			print('###################### product (get) ##########################')
+			# print('###################### product (get) ##########################')
 			# for i, obj in enumerate(product_details):
 			# 	print(f'{i+1}. {obj.title}')
-			print('###################### end product (get) ##########################')
+			# print('###################### end product (get) ##########################')
 			serializer = ProductSerializer(product_details, many=True, context={'request': request})
 	
 	return Response(serializer.data)

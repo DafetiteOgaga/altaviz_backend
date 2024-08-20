@@ -25,14 +25,14 @@ def contact_us(request):
         if serializer.is_valid():
             serializer.save()
             
-            contacts = ContactUser.objects.all()
+            contacts = ContactUs.objects.all()
             print('###################### content (post) ##########################')
             [print(f'{i+1}. {obj.message} by: {obj.name} with email: {obj.email}') for i, obj, in enumerate(contacts)]
             print('###################### end content (post) ##########################')
             
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    contacts = ContactUser.objects.all()
+    contacts = ContactUs.objects.all()
     print('###################### content (get) ##########################')
     [print(f'{i+1}. {obj.message} by: {obj.name} with email: {obj.email}') for i, obj, in enumerate(contacts)]
     print('###################### end content (get) ##########################')

@@ -21,6 +21,8 @@ from django.conf.urls.static import static
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('', include('app_location.urls')),     # For app_location configuration
+    path('', include('app_department.urls')),     # For app_department configuration
     path('', include('app_requests_and_posts.urls')),     # For app_requests_and_posts configuration
     path('', include('app_inventory.urls')),     # For app_inventory configuration
     path('', include('app_bank.urls')),     # For app_bank configuration

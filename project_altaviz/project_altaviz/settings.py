@@ -38,6 +38,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'app_location',		# <- added startapp here
+    'app_department',		# <- added startapp here
     'app_requests_and_posts',		# <- added startapp here
     'app_inventory',		# <- added startapp here
     'app_bank',		# <- added startapp here

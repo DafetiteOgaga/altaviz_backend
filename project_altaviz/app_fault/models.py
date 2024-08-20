@@ -1,7 +1,7 @@
 from django.db import models
 from app_engineer.models import Engineer
 from app_supervisor.models import Supervisor
-from app_help_desk.models import Help_Desk
+from app_help_desk.models import HelpDesk
 from app_bank.models import Bank
 
 # Create your models here.
@@ -16,7 +16,7 @@ class Fault(models.Model):
 
     assigned_to = models.ForeignKey(Engineer, on_delete=models.PROTECT, related_name='assignedTo')
     supervised_by = models.ForeignKey(Supervisor, on_delete=models.PROTECT, related_name='supervisedBy')
-    managed_by = models.ForeignKey(Help_Desk, on_delete=models.PROTECT, related_name='managedBy')
+    managed_by = models.ForeignKey(HelpDesk, on_delete=models.PROTECT, related_name='managedBy')
     logged_by = models.ForeignKey(Bank, on_delete=models.PROTECT, related_name='loggedBy')
     created_at = models.DateTimeField(auto_now_add=True)
     resolved_at = models.DateTimeField(auto_now=True)
