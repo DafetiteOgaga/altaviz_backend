@@ -21,14 +21,14 @@ from django.conf.urls.static import static
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('', include('app_sse_notification.urls')),     # For app_sse_notification configuration
+    path('', include('app_deliveries.urls')),     # For app_deliveries configuration
+    path('', include('app_search.urls')),     # For app_search configuration
+    path('', include('app_auth.urls')),     # For app_auth configuration
+    path('', include('app_custodian.urls')),     # For app_custodian configuration
     path('', include('app_location.urls')),     # For app_location configuration
-    path('', include('app_department.urls')),     # For app_department configuration
-    path('', include('app_requests_and_posts.urls')),     # For app_requests_and_posts configuration
     path('', include('app_inventory.urls')),     # For app_inventory configuration
     path('', include('app_bank.urls')),     # For app_bank configuration
-    path('', include('app_help_desk.urls')),     # For app_help_desk configuration
-    path('', include('app_supervisor.urls')),     # For app_supervisor configuration
-    path('', include('app_engineer.urls')),     # For app_engineer configuration
     path('', include('app_fault.urls')),     # For app_fault configuration
     path('', include('app_products.urls')),     # For app_products configuration
     path('', include('app_contactus.urls')),     # For app_contactus configuration
