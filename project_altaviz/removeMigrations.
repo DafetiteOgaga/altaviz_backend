@@ -1,0 +1,22 @@
+#!/bin/bash
+
+# Find all migration directories in the project
+migrations=$(find . -type d -name "migrations")
+
+echo "Migrations directories found:"
+echo "$migrations"
+
+# Loop through each migration directory
+for migration in $migrations; do
+    echo "Processing migration directory: $migration #########"
+
+    # Loop through and remove each file starting with '0' in the migration directory
+    for file in "$migration"/0*.py; do
+        if [ -f "$file" ]; then
+            echo "Removing file: $file"
+            rm "$file"
+        else
+            echo "No files starting with 0 found in $migration"
+        fi
+    done
+done

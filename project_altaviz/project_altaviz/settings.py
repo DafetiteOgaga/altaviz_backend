@@ -38,14 +38,14 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'app_sse_notification',		# <- added startapp here
+    'app_deliveries',		# <- added startapp here
+    'app_search',		# <- added startapp here
+    'app_auth',		# <- added startapp here
+    'app_custodian',		# <- added startapp here
     'app_location',		# <- added startapp here
-    'app_department',		# <- added startapp here
-    'app_requests_and_posts',		# <- added startapp here
     'app_inventory',		# <- added startapp here
     'app_bank',		# <- added startapp here
-    'app_help_desk',		# <- added startapp here
-    'app_supervisor',		# <- added startapp here
-    'app_engineer',		# <- added startapp here
     'app_fault',		# <- added startapp here
     'app_products',		# <- added startapp here
     'app_contactus',		# <- added startapp here
@@ -140,7 +140,20 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# Allow credentials (cookies, authorization headers, etc.)
+CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_ALL_ORIGINS = True
+# CSRF_TRUSTED_ORIGINS = ['*']
+# CORS_ALLOWED_ORIGINS = [
+#     "http://localhost:3000",
+#     "http://127.0.0.1:3000",
+# ]
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+CORS_ALLOW_HEADERS = ['*']
+CORS_ALLOW_METHODS = ['*']
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')

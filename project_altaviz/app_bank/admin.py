@@ -1,6 +1,6 @@
 from django.contrib import admin
-from .models import *
+from .models import Bank, State
 
 # Register your models here.
-admin.site.register(Custodian)
 admin.site.register(Bank)
+admin.site.register(State)

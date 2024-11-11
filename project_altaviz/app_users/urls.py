@@ -2,8 +2,25 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
+    # create new user account and create new location/branch if needed
     path('user/', view=views.users, name='user'),
     path('user/<int:pk>/', view=views.users, name='userDetail'),
+
+    # details update request by users
+    path('user-details-update/<int:pk>/', view=views.userDetaileUpdate, name='userDetaileUpdate'),
+
+    # notification for update request human resource and approving/rejecting the request
+    path('approve-user-details-update/<int:pk>/', view=views.approvedDetailsChange, name='approvedDetailsChange'),
+    path('approve-user-details-update/<str:type>/<int:pk>/', view=views.approvedDetailsChange, name='approvedDetailsChange-type'),
+    path('approve-user-details-update/<int:pk>/total/', view=views.totalApprovedDetailsChange, name='totalApprovedDetailsChange'),
+
+    ## region engineers and their locations
+    path('region-engineers/<int:pk>/', view=views.regionEngineers, name='regionEngineers'),
+
+    # engineers notification and assignment of engineers to locations
+    path('new-location-assignment/<int:pk>/', view=views.assignEngineerToLocation, name='assignEngineerToLocation'),
+    path('new-location-assignment/<str:type>/<int:pk>/', view=views.assignEngineerToLocation, name='assignEngineerToLocation-type'),
+    path('new-location-assignment/<int:pk>/total/', view=views.totalAssignEngineerToLocation, name='totalAssignEngineerToLocation'),
 	# # Create your urlpatterns here.
 	# # authentication
 	# path('login/', views.login_page, name='login'),
