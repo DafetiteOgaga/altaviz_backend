@@ -65,8 +65,8 @@ class UserReadSerializer(serializers.ModelSerializer):
 	# 	# return None
 	# 	return CustodianSerializer(obj.custodiandata.first()).data
 	def get_branch(self, obj):
-		print(f'obj (brSer) ###### : {obj}')
-		print(f'obj.branchcustodian b>c (brSer) ###### : {obj.branchcustodian.all()}')
+		# print(f'obj (brSer) ###### : {obj}')
+		# print(f'obj.branchcustodian b>c (brSer) ###### : {obj.branchcustodian.all()}')
 		# print(f'obj.branchcustodian user->custodian->branch (brSer) ###### : {obj.custodiandata.all().first().branch}')
 		# branchSerializer = obj.custodiandata.all().first().branch
 		branchSerializer = obj.custodiandata.all().first()
