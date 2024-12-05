@@ -19,7 +19,8 @@ from django.db.models import Q
 from django.utils.dateparse import parse_datetime
 from django.utils import timezone
 from datetime import datetime
-from app_sse_notification.views import send_sse_notification
+# from app_sse_notification.views import send_sse_notification
+from app_sse_notification.utils import send_websocket_notification
 
 def compartmentalizedList(listValue: list):
 	newDict = {}
@@ -51,12 +52,13 @@ def faultDetail(request, pk=None):
 def fault(request, pk=None):
 	# faultDetails = Fault.objects.all()
 	if request.method == 'POST':
+		region = Region.objects.get(name=request.data['region'])
 		print('fault payload:', request.data)
 		location = Location.objects.get(
 			location=request.data['location'],
 			bank=Bank.objects.get(name=request.data['bank']),
 			state=State.objects.get(name=request.data['state']),
-			region=Region.objects.get(name=request.data['region']),
+			region=region,
 		)
 		assigned_to = request.data['assigned_to']
 		supervised_by = request.data['supervised_by']
@@ -99,7 +101,9 @@ def fault(request, pk=None):
 				print(f'SAVED #########################')
 				if length != 0:
 					continue
-				send_sse_notification('fault created')
+				print('start send_websocket_notification ##########')
+				send_websocket_notification(f'fault created-{region.name}')
+				print('end send_websocket_notification ##########')
 				return Response(serializer.data, status=status.HTTP_201_CREATED)
 			print(f'serializer.errors: {serializer.errors}')
 			return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -122,6 +126,8 @@ def custodianPendingFaults(request, pk=None, type=None):
 		print(f'verified title: {fault.title}')
 		print(f'verified other: {fault.other}')
 		print(f'fault object: {fault}')
+		region = fault.logged_by.branch.region.name
+		print(f'region: {region}')
 		patchSerializer = FaultPatchSerializer(instance=fault, data=request.data, partial=True)
 		print(f'is patchSerializer valid: {patchSerializer.is_valid()}')
 		if patchSerializer.is_valid():
@@ -133,7 +139,9 @@ def custodianPendingFaults(request, pk=None, type=None):
 			# print(f'verified title: {resolvedFault.title}')
 			# print(f'verified other: {resolvedFault.other}')
 			# print(f'fault object: {resolvedFault}')
-			send_sse_notification('verify resolve')
+			print('start send_websocket_notification ##########')
+			send_websocket_notification(f'verify resolve-{region}')
+			print('end send_websocket_notification ##########')
 			return Response(patchSerializer.data, status=status.HTTP_200_OK)
 		return Response(patchSerializer.errors, status=status.HTTP_400_BAD_REQUEST)
 	elif request.method == 'GET':
@@ -221,7 +229,9 @@ def custodianUnconfirmedResolutions(request, pk=None, type=None):
 			confirmResolution.save()
 			####################################
 			print(f'Confirmaion saved')
-			send_sse_notification('confirm resolve')
+			print('start send_websocket_notification ##########')
+			send_websocket_notification(f'confirm resolve-{faultLoggedBy.region.name}')
+			print('end send_websocket_notification ##########')
 			payloadKeys = ['resolvedBy', 'managedBy', 'supervisedBy']
 			usersToGetPoints = []
 			# allGood = []
@@ -251,7 +261,9 @@ def custodianUnconfirmedResolutions(request, pk=None, type=None):
 					# print(f'user dict: {user}')
 					user[index].save()
 					print()
-			send_sse_notification('deliveries point')
+			print('start send_websocket_notification ##########')
+			send_websocket_notification(f'deliveries point-{faultLoggedBy.region.name}')
+			print('end send_websocket_notification ##########')
 			return Response(confirmResolution.data, status=status.HTTP_200_OK)
 		# print(f'Error saving confirmation resolution: {confirmResolution.errors}')
 		print(f'Error saving confirmation resolution: {confirmResolution.errors}')
@@ -508,7 +520,7 @@ def totalRegionFaults(request, pk=None):
 
 ####################################################################
 @api_view(['GET',])
-def engineerUnresolvedFaults(request, pk=None):
+def engineerUnresolvedFaults(request, pk=None, type=None):
 	print('##################### engineerUnresolvedFaults ###########################')
 	print(f'pk: {pk}')
 	engineer = User.objects.get(pk=pk)
@@ -520,24 +532,40 @@ def engineerUnresolvedFaults(request, pk=None):
 	faultSerializer = FaultReadSerializer(faults, many=True).data
 	for (item, faultRequests) in zip(faultSerializer, faults):
 		faultCompRequest = faultRequests.componentfault.all()
-		faultCompRequestSerializer = RequestFaultComponentReadSerializer(instance=faultCompRequest, many=True)
+		faultCompRequestSerializer = RequestFaultComponentReadSerializer(instance=faultCompRequest, many=True).data
+		for component in faultCompRequestSerializer:
+			component['type'] = 'component'
 		# if faultCompRequestSerializer.data: print(f'faultCompRequestSerializer: {faultCompRequestSerializer.data}')
 		# item['requestStatus'] = True if faultCompRequestSerializer.data else False
-		item['requestComponent'] = faultCompRequestSerializer.data if faultCompRequestSerializer.data else False
+		item['requestComponent'] = faultCompRequestSerializer if faultCompRequestSerializer else False
 		# print('\n')
 		faultPartRequest = faultRequests.partfault.all()
-		faultPartRequestSerializer = RequestFaultPartReadSerializer(instance=faultPartRequest, many=True)
+		faultPartRequestSerializer = RequestFaultPartReadSerializer(instance=faultPartRequest, many=True).data
+		for part in faultPartRequestSerializer:
+			part['type'] = 'part'
 		# if faultPartRequestSerializer.data: print(f'faultPartRequestSerializer: {faultPartRequestSerializer.data}')
-		item['requestPart'] = faultPartRequestSerializer.data if (faultPartRequestSerializer.data or faultPartRequestSerializer.data) else False
-		item['requestStatus'] = bool(faultCompRequestSerializer.data) or bool(faultPartRequestSerializer.data)
-		# print(f'#####******########****** requestStatus: {bool(faultCompRequestSerializer.data) or bool(faultPartRequestSerializer.data)}')
+		item['requestPart'] = faultPartRequestSerializer if faultPartRequestSerializer else False
+		item['requestStatus'] = bool(faultCompRequestSerializer) or bool(faultPartRequestSerializer)
+		# print(f'#####******########****** requestStatus')
+	if type == 'list':
+		print(f'length of faultSerializer: {len(faultSerializer)}')
+		return Response(faultSerializer, status=status.HTTP_200_OK)
+	elif type == 'notification':
+		faultSerializer = faultSerializer[:5]
+		print(f'length of faultSerializer: {len(faultSerializer)}')
+		return Response(faultSerializer, status=status.HTTP_200_OK)
+	userPaginator = PageNumberPagination()
+	userPaginator.page_size = 10  # Number of items per page
+	paginated_fault = userPaginator.paginate_queryset(faultSerializer, request)
 	print('##################### end engineerUnresolvedFaults ###########################')
-	# return userPaginator.get_paginated_response(serialized_data)
-	return Response(faultSerializer, status=status.HTTP_200_OK)
+	return userPaginator.get_paginated_response(paginated_fault)
+	# print('##################### end engineerUnresolvedFaults ###########################')
+	# # return userPaginator.get_paginated_response(serialized_data)
+	# return Response(faultSerializer, status=status.HTTP_200_OK)
 
 ####################################################################
 @api_view(['GET',])
-def custodianUnresolvedFaults(request, pk=None):
+def custodianUnresolvedFaults(request, pk=None, type=None):
 	print('##################### custodianUnresolvedFaults ###########################')
 	print(f'pk: {pk}')
 	custodian = User.objects.get(pk=pk)
@@ -566,7 +594,19 @@ def custodianUnresolvedFaults(request, pk=None):
 			item['requestComponent'] = faultCompRequestSerializer.data if faultCompRequestSerializer.data else False
 			item['requestPart'] = faultPartRequestSerializer.data if (faultPartRequestSerializer.data) else False
 		item['requestStatus'] = True if any([partRequestExist, componentRequestExist]) else False
-	return Response(faultSerializer, status=status.HTTP_200_OK)
+	if type == 'list':
+		print(f'length of faultSerializer: {len(faultSerializer)}')
+		return Response(faultSerializer, status=status.HTTP_200_OK)
+	elif type == 'notification':
+		faultSerializer = faultSerializer[:5]
+		print(f'length of faultSerializer: {len(faultSerializer)}')
+		return Response(faultSerializer, status=status.HTTP_200_OK)
+	userPaginator = PageNumberPagination()
+	userPaginator.page_size = 10  # Number of items per page
+	paginated_fault = userPaginator.paginate_queryset(faultSerializer, request)
+	print('##################### end custodianUnresolvedFaults ###########################')
+	return userPaginator.get_paginated_response(paginated_fault)
+	# return Response(faultSerializer, status=status.HTTP_200_OK)
 
 ###################################################################
 ################# hr #####################
@@ -603,11 +643,15 @@ def allFaultsWRequests(request, pk=None, type=None):
 		faultCompRequest = faultRequests.componentfault.all()
 		faultPartRequest = faultRequests.partfault.all()
 
-		faultCompRequestSerializer = RequestFaultComponentReadSerializer(instance=faultCompRequest, many=True)
-		faultPartRequestSerializer = RequestFaultPartReadSerializer(instance=faultPartRequest, many=True)
+		faultCompRequestSerializer = RequestFaultComponentReadSerializer(instance=faultCompRequest, many=True).data
+		for component in faultCompRequestSerializer:
+			component['type'] = 'component'
+		faultPartRequestSerializer = RequestFaultPartReadSerializer(instance=faultPartRequest, many=True).data
+		for part in faultPartRequestSerializer:
+			part['type'] = 'part'
 
-		item['requestComponent'] = faultCompRequestSerializer.data if faultCompRequestSerializer.data else False
-		item['requestPart'] = faultPartRequestSerializer.data if (faultPartRequestSerializer.data or faultPartRequestSerializer.data) else False
+		item['requestComponent'] = faultCompRequestSerializer if faultCompRequestSerializer else False
+		item['requestPart'] = faultPartRequestSerializer if faultPartRequestSerializer else False
 		item['requestStatus'] = bool(partRequestExist) or bool(componentRequestExist)
 	if type == 'list':
 		print(f'length of faultSerializer: {len(faultSerializer)}')

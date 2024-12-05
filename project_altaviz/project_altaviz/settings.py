@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     'django_extensions',		# <- added django_extensions here
     'rest_framework',
     'corsheaders',
+    'channels',
 ]
 
 MIDDLEWARE = [
@@ -65,6 +66,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
 ]
 
 ROOT_URLCONF = 'project_altaviz.urls'
@@ -152,10 +154,30 @@ CSRF_TRUSTED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
 ]
-CORS_ALLOW_HEADERS = ['*']
-CORS_ALLOW_METHODS = ['*']
+# CORS_ALLOW_HEADERS = ['*']
+# CORS_ALLOW_METHODS = ['*']
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
+STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
 AUTH_USER_MODEL = 'app_users.User'
+
+ASGI_APPLICATION = "project_altaviz.asgi.application"
+# Use Django's in-memory channel layer for development
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer",  # In-memory backend for development
+    },
+}
+
+# Optional: Enable compression and caching for better performance
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+# spin up local server:
+#  daphne -p 8000 project_altaviz.asgi:application
+
+# logon local server to test it
+# websocat ws://127.0.0.1:8000/ws/notifications/

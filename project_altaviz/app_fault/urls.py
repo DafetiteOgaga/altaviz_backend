@@ -11,6 +11,7 @@ urlpatterns = [
 
 	# custodian
 	path('unresolved-faults/<int:pk>/', view=views.custodianUnresolvedFaults, name='custodianUnresolvedFaults'),
+	path('unresolved-faults/<str:type>/<int:pk>/', view=views.custodianUnresolvedFaults, name='custodianUnresolvedFaults-type'),
 	path('pending-faults/<int:pk>/', view=views.custodianPendingFaults, name='custodianPendingFaults'),
 	path('pending-faults/<str:type>/<int:pk>/', view=views.custodianPendingFaults, name='custodianPendingFaults-type'),
 	path('pending-faults/<int:pk>/total/', view=views.totalCustodianPendingFaults, name='totalCustodianPendingFaults'),
@@ -21,6 +22,7 @@ urlpatterns = [
 
 	# engineer
 	path('engineer-unresolved-faults/<int:pk>/', view=views.engineerUnresolvedFaults, name='engineerUnresolvedFaults'),
+	path('engineer-unresolved-faults/<str:type>/<int:pk>/', view=views.engineerUnresolvedFaults, name='engineerUnresolvedFaults-type'),
 	path('engineer-pending-faults/<int:pk>/', view=views.engineerPendingFaults, name='engineerPendingFaults'),
 	path('engineer-pending-faults/<str:type>/<int:pk>/', view=views.engineerPendingFaults, name='engineerPendingFaults-type'),
 	path('engineer-pending-faults/<int:pk>/total/', view=views.totalEngineerPendingFaults, name='totalEngineerPendingFaults'),

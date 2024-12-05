@@ -7,7 +7,8 @@ from .serializers import *
 from rest_framework.pagination import PageNumberPagination
 from app_fault.views import engineerPendingFaults
 from django.db.models import Q, Prefetch
-from app_sse_notification.views import send_sse_notification
+# from app_sse_notification.views import send_sse_notification
+from app_sse_notification.utils import send_websocket_notification
 
 def compartmentalizedList(listValue: list):
 	newDict = {}
@@ -74,7 +75,7 @@ def componentName(request, pk=None):
 				print(f'component inventory posted by: {componentInventory.user}')
 				componentInventory.save()
 				print('component inventory updated.')
-				send_sse_notification('added component name to inventory')
+				send_websocket_notification('added component name to inventory')
 				return Response(serializer.data, status=status.HTTP_201_CREATED)
 			print(f'serializer.errors: {serializer.errors}')
 			return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -116,7 +117,7 @@ def components(request, pk=None):
 					print(f'saved: {dicttn}')
 				if length != 0:
 					continue
-				send_sse_notification('updated component in inventory')
+				send_websocket_notification('updated component in inventory')
 				return Response({'success': 'Success: Inventory has been updated.'}, status=status.HTTP_201_CREATED)
 			print(f'serializer.errors: {serializer.errors}')
 			return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -184,7 +185,7 @@ def partName(request, pk=None):
 				print(f'part inventory posted by: {partInventory.user}')
 				partInventory.save()
 				print('part inventory updated.')
-				send_sse_notification('added part name to inventory')
+				send_websocket_notification('added part name to inventory')
 				return Response(serializer.data, status=status.HTTP_201_CREATED)
 			print(f'serializer.errors: {serializer.errors}')
 			return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -226,7 +227,7 @@ def parts(request, pk=None):
 					print(f'saved: {dicttn}')
 				if length != 0:
 					continue
-				send_sse_notification('updated part in inventory')
+				send_websocket_notification('updated part in inventory')
 				return Response({'success': 'Success: Inventory has been updated.'}, status=status.HTTP_201_CREATED)
 			print(f'serializer.errors: {serializer.errors}')
 			return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -278,7 +279,9 @@ def unapprovedPart(request, pk=None, type=None):
 			else:
 				print(f'ptSerializer error: {ptSerializer.errors}')
 				return Response({'error': 'Could not complete.'}, status=status.HTTP_201_CREATED)
-		send_sse_notification('fixed part ready')
+		print('start send_websocket_notification ##########')
+		send_websocket_notification('fixed part ready-hr')
+		print('end send_websocket_notification ##########')
 		print('################# end unapprovedPart #################')
 		return Response({'received': 'Awaits approval.'}, status=status.HTTP_201_CREATED)
 	elif request.method == 'PATCH':
@@ -288,6 +291,7 @@ def unapprovedPart(request, pk=None, type=None):
 
 		# note: this setup is equally used in the patch method of requestComponent for
 		# human-resource component request approval for workshop staffs
+		# note: this code is missing incrementing the actual part component
 		user = User.objects.get(pk=pk)
 		print(f'user: {user}')
 		print(f'user.role: {user.role}')
@@ -300,8 +304,10 @@ def unapprovedPart(request, pk=None, type=None):
 		part.save()
 		print(f'status (after)=> approved: {part.approved}, rejected: {part.rejected}')
 		reaponse = 'approved' if part.approved else 'rejected'
-		send_sse_notification('approve or reject fixed parts')
-		print(f'triggered send_sse_notification #####################')
+		print('start send_websocket_notification ##########')
+		send_websocket_notification(f'approve or reject fixed parts-hr')
+		print('end send_websocket_notification ##########')
+		# print(f'triggered send_websocket_notification #####################')
 		return Response({'msg': reaponse}, status=status.HTTP_200_OK)
 	elif request.method == 'GET':
 		print('################# user unapprovedPart noti #################')
@@ -323,6 +329,11 @@ def unapprovedPart(request, pk=None, type=None):
 				unapprovedPart = UnconfirmedPart.objects.filter(approved=False, rejected=False)
 			print(f'posted parts ids: {[part.id for part in unapprovedPart]}')
 			partSerializer = UnconfirmedPartSerializer(instance=unapprovedPart, many=True).data
+			for fixedPart in partSerializer:
+				fixedPart['type'] = 'fixed-part'
+			# partSerializer = [part['type'] = "part" for part in partSerializer]
+			# for part in partSerializer:
+			# 	part['type'] = 'part'
 			print(f'role: {user.role}')
 			if type == 'list':
 				print(f'length of partSerializer: {len(partSerializer)}')
@@ -343,7 +354,7 @@ def deleteUnapprovedPart(request, pk=None):
 		item = UnconfirmedPart.objects.get(pk=pk)
 		print(f'deleting ... : {item}')
 		item.delete()
-		send_sse_notification('fixed part deleted')
+		send_websocket_notification('fixed part deleted')
 		return Response({'msg': 'Posted Part deleted successfully.'}, status=status.HTTP_204_NO_CONTENT)
 	except UnconfirmedPart.DoesNotExist:
 		return Response({'msg': 'Part does not exist.'}, status=status.HTTP_404_NOT_FOUND)
@@ -381,6 +392,8 @@ def requestComponent(request, pk=None, type=None):
 	if request.method == 'POST':
 		# note: only workshop would not require fault field
 		print('################# requestComponent ####################')
+		region = User.objects.get(email=request.data['user']).region.name
+		print(f'region:', region)
 		print(f'post payload: {request.data}')
 		# dicttn = {}
 		compRequestList = [
@@ -423,7 +436,9 @@ def requestComponent(request, pk=None, type=None):
 		print(f'length of requests: {_}')
 		print(f'len responseInstances: {len(responseInstances)}')
 		print(f'response: {response}')
-		send_sse_notification('make component request')
+		print('start send_websocket_notification ##########')
+		send_websocket_notification(f'make component request-{region}')
+		print('end send_websocket_notification ##########')
 		return Response({'msg': f'{response} Received.', 'responseObjs': responseInstances}, status=status.HTTP_200_OK)
 	elif request.method == 'PATCH':
 		# note: only workshop would not require fault field
@@ -431,6 +446,8 @@ def requestComponent(request, pk=None, type=None):
 		print(f'patch payload: {request.data}')
 		componentRequest = RequestComponent.objects.get(pk=request.data['faultID'])
 		print(f'componentRequest: {componentRequest}')
+		region = componentRequest.user.region.name
+		print(f'region: {region}')
 		serializedComponentRequest = RequestComponentCreateSerializer(
 			instance=componentRequest, data=request.data, partial=True
 		)
@@ -443,7 +460,9 @@ def requestComponent(request, pk=None, type=None):
 			updatedComponentRequest = RequestComponent.objects.get(pk=request.data['faultID'])
 			print(f'status (after)=> approved: {updatedComponentRequest.approved}, rejected: {updatedComponentRequest.rejected}')
 			reaponse = 'approved' if updatedComponentRequest.approved else 'rejected'
-			send_sse_notification('approve/reject component request')
+			print('start send_websocket_notification ##########')
+			send_websocket_notification(f'approve/reject component request-{region}')
+			print('end send_websocket_notification ##########')
 			return Response({'msg': reaponse}, status=status.HTTP_200_OK)
 			# return Response({'msg': 'Success'}, status=status.HTTP_200_OK)
 		print(f'serializedComponentRequest.error: {serializedComponentRequest.errors}')
@@ -455,6 +474,8 @@ def requestComponent(request, pk=None, type=None):
 			print(f'user obj: {user}')
 			userRequest = RequestComponent.objects.filter(user=user, approved=False, rejected=False)
 			componentSerializer = RequestComponentReadSerializer(instance=userRequest, many=True).data
+			for component in componentSerializer:
+				component['type'] = 'component'
 			# print(f'user: {user}')
 			if type == 'list':
 				print(f'length of componentSerializer: {len(componentSerializer)}')
@@ -490,7 +511,7 @@ def deleteCompRequest(request, pk=None):
 		return Response({'error': 'compRequest not found'}, status=status.HTTP_404_NOT_FOUND)
 	print(f'compRequest: {compRequest}')
 	compRequest.delete()
-	send_sse_notification('component request deleted')
+	send_websocket_notification('component request deleted')
 	print('##################### end delete CompRequest ###########################')
 	return Response({'msg': 'deleted successfully'}, status=status.HTTP_200_OK)
 
@@ -516,6 +537,8 @@ def requestPart(request, pk=None, type=None):
 	if request.method == 'POST':
 		# note: only workshop would not require fault field
 		print('################# requestPart ####################')
+		region = User.objects.get(email=request.data['user']).region.name
+		print(f'region:', region)
 		print(f'post payload: {request.data}')
 		# dicttn = {}
 		partRequestList = [
@@ -556,7 +579,9 @@ def requestPart(request, pk=None, type=None):
 		print(f'length of requests: {_}')
 		print(f'len responseInstances: {len(responseInstances)}')
 		print(f'response: {response}')
-		send_sse_notification('make part request')
+		print('start send_websocket_notification ##########')
+		send_websocket_notification(f'make part request-{region}')
+		print('end send_websocket_notification ##########')
 		return Response({'msg': f'{response} Received.', 'responseObjs': responseInstances}, status=status.HTTP_200_OK)
 	elif request.method == 'PATCH':
 		# note: only workshop would not require fault field
@@ -564,6 +589,8 @@ def requestPart(request, pk=None, type=None):
 		print(f'patch payload: {request.data}')
 		partRequest = RequestPart.objects.get(pk=request.data['faultID'])
 		print(f'partRequest: {partRequest}')
+		region = partRequest.user.region.name
+		print(f'region: {region}')
 		serializedPartRequest = RequestPartCreateSerializer(
 			instance=partRequest, data=request.data, partial=True
 		)
@@ -572,7 +599,9 @@ def requestPart(request, pk=None, type=None):
 			print(f'serializedPartRequest is valid')
 			serializedPartRequest.save()
 			print(f'serializedPartRequest saved #################')
-			send_sse_notification('approve/reject part request')
+			print('start send_websocket_notification ##########')
+			send_websocket_notification(f'approve/reject part request-{region}')
+			print('end send_websocket_notification ##########')
 			return Response({'msg': 'Success'}, status=status.HTTP_200_OK)
 		print(f'serializedPartRequest.error: {serializedPartRequest.errors}')
 		return Response(serializedPartRequest.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -583,6 +612,8 @@ def requestPart(request, pk=None, type=None):
 			print(f'user obj: {user}')
 			partRequest = RequestPart.objects.filter(user=user, approved=False, rejected=False)
 			partSerializer = RequestPartReadSerializer(instance=partRequest, many=True).data
+			for part in partSerializer:
+				part['type'] = '[part]'
 			# print(f'user: {user}')
 			if type == 'list':
 				print(f'length of partSerializer: {len(partSerializer)}')
@@ -634,7 +665,7 @@ def deletePartRequest(request, pk=None):
 		return Response({'error': 'partRequest not found'}, status=status.HTTP_404_NOT_FOUND)
 	print(f'partRequest: {partRequest}')
 	partRequest.delete()
-	send_sse_notification('part request deleted')
+	send_websocket_notification('part request deleted')
 	print('##################### end delete partRequest ###########################')
 	return Response({'msg': 'deleted successfully'}, status=status.HTTP_200_OK)
 
@@ -780,7 +811,6 @@ def totalRegionUserRequests(request, pk=None):
 @api_view(['GET'])
 def unconfirmedRegionResolutions(request, pk=None, type=None):
 	print('##################### unconfirmedRegionResolutions ###########################')
-	# Get the help-desk user
 	user = User.objects.get(pk=pk)
 	region = user.region
 	print(f'help-desk user: {user}')
@@ -789,24 +819,24 @@ def unconfirmedRegionResolutions(request, pk=None, type=None):
 	# Fetch all engineers from the same region
 	engineers = User.objects.filter(
 		Q(role='engineer') | Q(role='supervisor'),
-		# role='engineer',
 		region=region
 	).prefetch_related(
-		# Prefetch faults with confirm_resolve=False
 		Prefetch(
 			'assignedto',
 			queryset=Fault.objects.filter(
-				# verify_resolve=True,
 				confirm_resolve=False
 			).prefetch_related(
-				# Prefetch related part and component requests (if they exist)
 				'partfault',
 				'componentfault'
 			),
 			to_attr='unresolved_faults'
 		)
 	).distinct()
-	print(f'Engineers: {engineers}')
+	print(f'Engineers length: {len(engineers)}')
+	engineers = list(filter(lambda engineer: engineer.unresolved_faults != [], engineers))
+	print(f'Engineers length: {len(engineers)}')
+	# print(f'Engineers: {engineers}')
+	# [[print(f'id: {fault.id}: {fault.confirm_resolve}') for fault in engineer.unresolved_faults] for engineer in engineers]
 	print()
 
 	allEngineersData = []  # Store all faults for all engineers
@@ -827,7 +857,7 @@ def unconfirmedRegionResolutions(request, pk=None, type=None):
 		faultSerializer = FaultReadSerializer(faultInstances, many=True).data
 		print(f'		faults: {[fault.id for fault in faultInstances]}')
 		# print(f'			faults: {[f"{fault.id}, verified: {fault.verify_resolve}, confirm: {fault.confirm_resolve}" for fault in faultInstances]}')
-		print(f'			faults: {[f"{fault.id}, confirm: {fault.confirm_resolve}" for fault in faultInstances]}')
+		# print(f'			faults: {[f"{fault.id}, confirm: {fault.confirm_resolve}" for fault in faultInstances]}')
 		# serializedFaults = faultSerializer.data
 		print()
 		for faultData, faultInstance in zip(faultSerializer, faultInstances):
@@ -890,6 +920,8 @@ def totalUnconfirmedRegionResolutions(request, pk=None):
 			to_attr='unresolved_faults'
 		)
 	).distinct()
+	print(f'Engineers length: {len(engineers)}')
+	engineers = list(filter(lambda engineer: engineer.unresolved_faults != [], engineers))
 	print(f'engineers: {engineers}')
 	print(f'total count: {len(engineers)}')
 	print('##################### end total totalUnconfirmedRegionResolutions ###########################')
@@ -908,7 +940,8 @@ def requestStatus(request, pk=None):
 		if 'rejected' in requestList: cleanedData['rejected'] = request.data['rejected']
 		print(f'cleanedData: {cleanedData}')
 		if 'requestComponentIds' in requestList: print(f'requestcomp Payload: {request.data["requestComponentIds"]}')
-		if 'requestPartIds' in requestList: print(f'requestpart Payload: {request.data["requestPartIds"]}')
+		if 'requestPartIDs' in requestList: print(f'requestpart Payload: {request.data["requestPartIDs"]}')
+		region = None
 		if 'requestComponentIds' in requestList:
 			for compRequestID in request.data['requestComponentIds'].split(','):
 				print(f'compRequestID: {compRequestID}')
@@ -916,6 +949,7 @@ def requestStatus(request, pk=None):
 				# compRequestID = int(compRequestID)
 				# print(f'type of value: {type(compRequestID)}')
 				compRequestInstance = RequestComponent.objects.get(pk=compRequestID)
+				region = compRequestInstance.fault.logged_by.branch.region.name
 				# print(f'approved: {compRequestInstance.approved}, rejected: {compRequestInstance.rejected}')
 				if compRequestInstance.approved or compRequestInstance.rejected:
 					print(f'Request component {compRequestID} has already been responded to. Skipping...')
@@ -929,9 +963,10 @@ def requestStatus(request, pk=None):
 				print(f'compserializer error: {compSerializer.errors}')
 				# print()
 		# return Response({'allgood'})
-		if 'requestPartIds' in requestList:
-			for partRequestID in request.data['requestPartIds'].split(','):
+		if 'requestPartIDs' in requestList:
+			for partRequestID in request.data['requestPartIDs'].split(','):
 				partRequestInstance = RequestPart.objects.get(pk=partRequestID)
+				region = compRequestInstance.fault.logged_by.branch.region.name
 				if partRequestInstance.approved or partRequestInstance.rejected:
 					print(f'Request part {partRequestID} has already been responded to. Skipping...')
 					continue
@@ -941,7 +976,9 @@ def requestStatus(request, pk=None):
 					partSerializer.save()
 					print(f'partSerializer for request {partRequestID} is saved successfully. ##################')
 				print(f'partSerializer error: {partSerializer.errors}')
-		send_sse_notification('approve/reject components and/or parts request')
+		print('start send_websocket_notification ##########')
+		send_websocket_notification(f'approve/reject components and/or parts request-{region}')
+		print('end send_websocket_notification ##########')
 		return Response({'msg': 'success'}, status=status.HTTP_200_OK)
 	return Response({'wrong method used'}, status=status.HTTP_200_OK)
 
@@ -1236,7 +1273,11 @@ def allUserRequests(request, pk=None, type=None):
 
 			# Serialize component and part requests
 			compRequestSerializer = RequestFaultComponentReadSerializer(faultCompRequests, many=True).data
+			for component in compRequestSerializer:
+				component['type'] = 'component'
 			partRequestSerializer = RequestFaultPartReadSerializer(faultPartRequests, many=True).data
+			for part in partRequestSerializer:
+				part['type'] = 'part'
 
 			# Add the serialized requests to the fault data
 			faultData['requestComponent'] = compRequestSerializer if compRequestSerializer else False
@@ -1318,6 +1359,8 @@ def workshopRequests(request, pk=None, type=None):
 	[print(f'componentID: {component.id}, approved: {component.approved}, rejected: {component.rejected}, dept: {component.user.role}, user: {component.user.first_name}') for component in componentRequests]
 	# return Response({'allgood'})
 	serializedComponents = RequestComponentReadSerializer(instance=componentRequests, many=True).data
+	for component in serializedComponents:
+		component['type'] = 'component'
 	if type == 'list':
 		print(f'length of serializedComponents: {len(serializedComponents)}')
 		return Response(serializedComponents, status=status.HTTP_200_OK)
@@ -1369,6 +1412,10 @@ def allRequestsOnly(request, pk=None, type=None):
 		approved=False,
 		rejected=False
 	)
+	fixedParts = UnconfirmedPart.objects.filter(
+		approved=False,
+		rejected=False
+	)
 	print(f'user: {user}')
 	print()
 	print(f'components >>>>>>>>>>')
@@ -1401,7 +1448,10 @@ def allRequestsOnly(request, pk=None, type=None):
 	partSerializer = RequestPartReadSerializer(instance=partRequests, many=True).data
 	for part in partSerializer:
 		part['type'] = 'part'
-	combinedSerializedItems = componentSerializer + partSerializer
+	fixedPartsSerializer = UnconfirmedPartSerializer(instance=fixedParts, many=True).data
+	for fixedPart in fixedPartsSerializer:
+		fixedPart['type'] = 'fixed-part'
+	combinedSerializedItems = componentSerializer + partSerializer + fixedPartsSerializer
 	# print(f'role: {user.role}')
 	if type == 'list':
 		print(f'length of combinedSerializedItems: {len(combinedSerializedItems)}')

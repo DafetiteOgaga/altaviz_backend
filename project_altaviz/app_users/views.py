@@ -14,7 +14,8 @@ from django.core.files import File
 from rest_framework.pagination import PageNumberPagination
 import os
 from django.conf import settings
-from app_sse_notification.views import send_sse_notification
+# from app_sse_notification.views import send_sse_notification
+from app_sse_notification.utils import send_websocket_notification
 
 def updateDetailesFxn(requestData, user):
 	############################ after admin approval ############################
@@ -42,7 +43,10 @@ def updateDetailesFxn(requestData, user):
 		newCustodian=custodian,
 		requestUser=user,
 	)
-	return 'from requestData fxn xoxoxoxoxoxo\n'
+	print('start send_websocket_notification ##########')
+	send_websocket_notification('account update request-hr')
+	print('end send_websocket_notification ##########')
+	return 'completed: requestData fxn xoxoxoxoxoxo\n'
 	# return Response(serializedUser.data, status=status.HTTP_201_CREATED)
 
 def getOrCreateBankLocationBranch(strObj: dict=None, user: object=None):
@@ -81,6 +85,9 @@ def getOrCreateBankLocationBranch(strObj: dict=None, user: object=None):
 		if triggerSupervisorNotification.is_valid():
 			triggerSupervisorNotification.save()
 			print('Notification sent successfully &&&&&&&&&&&')
+			print('start send_websocket_notification ##########')
+			send_websocket_notification(f'assigned engineer to new location-{region}')
+			print('end send_websocket_notification ##########')
 		else:
 			print(f'triggerSupervisorNotification error: {triggerSupervisorNotification.errors}')
 			print('notification unsuccessful &&&&&&&&&&&')
@@ -88,7 +95,7 @@ def getOrCreateBankLocationBranch(strObj: dict=None, user: object=None):
 		# trigger a model that sends a notification to the supervisor to assign an enineer to that location
 		###################################################################################################
 		print(f'location (with new bank): {location}')
-	if user:
+	if user and strObj['branchStr'] != '':
 		branch, _ = Branch.objects.get_or_create(
 			name=strObj['branchStr'],
 			custodian=user,
@@ -211,15 +218,40 @@ def userDetaileUpdate(request, pk=None):
 		####################################################
 		####################################################
 		requestLocation = request.data["location"]
-		userLocation = user.location.location
+
+		####################################################
+		####################################################
+		# check if its a new location and/or branch. however,
+		# these new objs should not be created here but in
+		# the code of hr approval
+		# newBranch and newLocation in the request payload now
+		# passes the value 'new' indicating new branch and location
+		####################################################
+		####################################################
+		if user.role == 'custodian':
+			valNew = 'new'
+			if request.data["newBranch"] == valNew or request.data["newLocation"] == valNew:
+				userLocation = valNew
+			else:
+				userLocation = user.branchcustodian.filter(location__location=requestLocation).first().location.location
+		else:
+			userLocation = user.location.location if request.data["newLocation"] != valNew else valNew
 		print(f'userLocation: {userLocation}')
+		# [print(f'branch: {location.name}', f'custodian: {location.custodian.first_name}', f'bank: {location.bank.name}', f'state: {location.state.name}', f'location: {location.location.location}', f'location: {location.region.name}', sep='\n') for location in userLocation]
+		# [print(f'location: {location.location.location}') for location in userLocation]
 		print(f'requestLocation: {requestLocation}')
+		# return Response({'msg': 'allgood'})
 		changeLocation = requestLocation != userLocation
 		print(f'changeLocation (user): {changeLocation}')
 		custodian = Custodian.objects.select_related('branch').filter(custodian=user)
+		print(f'custodian: {custodian}')
 		changeBranch = None
 		updateDetailes = None
+		# return Response({'msg': 'allgood'})
 		if custodian:
+			custodian = custodian[0]
+			print(f'custodian: {custodian.custodian.first_name}')
+			print(f'branch: {custodian.branch.name}')
 			branchLocation = custodian.branch.location.location
 			print(f'branchLocation: {branchLocation}')
 			changeLocation = requestLocation != branchLocation
@@ -228,7 +260,7 @@ def userDetaileUpdate(request, pk=None):
 			custodianBranch = custodian.branch.id
 			print(f'requestBranch: {requestBranch}')
 			print(f'custodianBranch: {custodianBranch}')
-			changeBranch = int(requestBranch) != int(custodianBranch)
+			changeBranch = int(requestBranch) != int(custodianBranch) if int(requestBranch) != 0 else False
 			print(f'changeBranch (custodian): {changeBranch}')
 		####################################################
 		####################################################
@@ -280,6 +312,9 @@ def userDetaileUpdate(request, pk=None):
 			print(f'changeBranch $$$$$: {changeBranch}')
 			# handle this change of branch location upon admin approval
 			updateDetailes = updateDetailesFxn(requestData=request.data, user=user)
+			# print('start send_websocket_notification ##########')
+			# send_websocket_notification('account update request-hr')
+			# print('end send_websocket_notification ##########')
 
 		# previous user location should be used instead
 		# of reassigning to the new location, pending when
@@ -300,7 +335,9 @@ def userDetaileUpdate(request, pk=None):
 		if not changeBranch and not changeLocation: text = 'Success'
 		resp = {'msg': text}
 		print(f'{resp}')
-		send_sse_notification('account update request')
+		# print('start send_websocket_notification ##########')
+		# send_websocket_notification('account update request-hr')
+		# print('end send_websocket_notification ##########')
 		return Response(resp, status=status.HTTP_200_OK)
 
 	# write a patch request to hndle user replacing the current request
@@ -317,8 +354,12 @@ def userDetaileUpdate(request, pk=None):
 		previousRequest.newState = request.data['state']
 		previousRequest.newBank = request.data['bank']
 		previousRequest.newLocation = request.data['location']
+		###### continue here >>>>>>>>>>>>>>>>>>>>>
 		previousRequest.newBranch = request.data['branch']
 		previousRequest.save()
+		print('start send_websocket_notification ##########')
+		send_websocket_notification('account update request-hr')
+		print('end send_websocket_notification ##########')
 		print('patch successful')
 		return Response({'msg': 'Request Update Successful'}, status=status.HTTP_200_OK)
 	return Response({'msg': 'error: wrong request method'}, status=status.HTTP_400_BAD_REQUEST)
@@ -450,6 +491,7 @@ def assignEngineerToLocation(request, pk=None, type=None):
 		print('assignEngineerToLocation PATCH payload:', request.data)
 		listKeys = list(request.data)
 		print(f'list version: {listKeys}')
+		region = None
 		for key in listKeys:
 			locationName, locationID = key.split('-')
 			engineerName, engineerEmail, engineerID = request.data[key].split(')-(')
@@ -460,6 +502,8 @@ def assignEngineerToLocation(request, pk=None, type=None):
 			print(f'engineerID: {engineerID}')
 			newLocation = Location.objects.get(pk=locationID)
 			print(f'newLocation: {newLocation}')
+			region = newLocation.region.name
+			print(f'region: {region}')
 			engineer = User.objects.get(pk=engineerID)
 			print(f'engineer: {engineer}')
 			branch = Branch.objects.filter(location=newLocation)
@@ -486,7 +530,10 @@ def assignEngineerToLocation(request, pk=None, type=None):
 				print(f'notification status: {notificationStatus.status}')
 			print('#######################')
 			print()
-		send_sse_notification('assigned engineer to new location')
+		print(f'region: {region}')
+		print('start send_websocket_notification ##########')
+		send_websocket_notification(f'assigned engineer to new location-{region}')
+		print('end send_websocket_notification ##########')
 		return Response({'msg': 'Success'}, status=status.HTTP_200_OK)
 	elif request.method == 'GET':
 		supervisor = User.objects.get(pk=pk)
@@ -503,7 +550,7 @@ def assignEngineerToLocation(request, pk=None, type=None):
 				print(f'length of serializedNotifications: {len(serializedNotifications)}')
 				return Response(serializedNotifications, status=status.HTTP_200_OK)
 			elif type == 'notification':
-				serializedNotifications = serializedNotifications[:5]
+				serializedNotifications = serializedNotifications[:10]
 				print(f'length of serializedNotifications: {len(serializedNotifications)}')
 				return Response(serializedNotifications, status=status.HTTP_200_OK)
 			userPaginator = PageNumberPagination()
