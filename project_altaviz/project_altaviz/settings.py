@@ -26,7 +26,7 @@ SECRET_KEY = 'django-insecure-d@)w9%r@j*w%9t%kz-#jpxlnz5nxsdvvk9u9h6*(n=0w0)+ye1
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['https://altaviz-frontend.vercel.app/']
 
 
 # Application definition
