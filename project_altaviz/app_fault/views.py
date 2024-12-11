@@ -204,7 +204,7 @@ def custodianUnconfirmedResolutions(request, pk=None, type=None):
 	if request.method == 'PATCH':
 		print('##################### custodianUnconfirmedResolutions ###########################')
 		patchData = {}
-		print(f'put payload: {request.data}')
+		print(f'PATCH payload: {request.data}')
 		faultID = request.data['faultID']
 		faultLoggedBy = User.objects.prefetch_related('custodiandata').get(pk=pk)
 		print(f'faultLoggedBy: {faultLoggedBy}')
@@ -239,6 +239,7 @@ def custodianUnconfirmedResolutions(request, pk=None, type=None):
 			for index, key in enumerate(payloadKeys):
 				print(f'Checking: {key}')
 				user = User.objects.get(email=request.data[key])
+				print(f'user: {user.first_name}')
 				userDelieries = Deliveries.objects.get(user=user)
 				print(f'got user delivery mail: {userDelieries.user.first_name}')
 				print(f'user email: {request.data[key]}')
