@@ -523,7 +523,7 @@ def assignEngineerToLocation(request, pk=None, type=None):
 				notificationStatus = EngineerAssignmentNotificaion.objects.get(
 					location=newLocation
 				)
-				print(f'notification status: {notificationStatus}')
+				print(f'notification: {notificationStatus}')
 				print(f'notification status: {notificationStatus.status}')
 				notificationStatus.status = False
 				notificationStatus.save()
