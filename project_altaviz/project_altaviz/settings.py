@@ -15,7 +15,7 @@ import os, sys
 # Your GitHub personal access token
 sys.path.append(os.path.expanduser("~"))
 from credentials import credentials
-print(f'credentials from server home dir:: {credentials}')
+# print(f'credentials from server home dir:: {credentials}')
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
