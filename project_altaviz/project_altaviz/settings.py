@@ -32,6 +32,7 @@ SECRET_KEY = os.environ.get('MY_SECRET_KEY') if os.environ.get('MY_SECRET_KEY') 
 
 ALLOWED_HOSTS = [
     # 'dafetite.pythonanywhere.com',
+    'altavizapp.pythonanywhere.com',
     'altaviz-frontend.vercel.app/',
     'localhost',
     '127.0.0.1',
