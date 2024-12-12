@@ -11,7 +11,11 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 """
 
 from pathlib import Path
-import os
+import os, sys
+# Your GitHub personal access token
+sys.path.append(os.path.expanduser("~"))
+from credentials import credentials
+print(f'credentials: {credentials}')
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -21,12 +25,18 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-d@)w9%r@j*w%9t%kz-#jpxlnz5nxsdvvk9u9h6*(n=0w0)+ye1'
+SECRET_KEY = os.environ.get('MY_SECRET_KEY') if os.environ.get('MY_SECRET_KEY') else credentials['MY_SECRET_KEY'],
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# DEBUG = True
 
-ALLOWED_HOSTS = ['https://altaviz-frontend.vercel.app/']
+ALLOWED_HOSTS = [
+    # 'dafetite.pythonanywhere.com',
+    'altaviz-frontend.vercel.app/',
+    'localhost',
+    '127.0.0.1',
+]
+# ALLOWED_HOSTS = []
 
 
 # Application definition
@@ -93,12 +103,83 @@ WSGI_APPLICATION = 'project_altaviz.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+# print('MY_LOCAL_MACHINE:', os.environ.get('MY_LOCAL_MACHINE'))
+if os.environ.get('MY_LOCAL_MACHINE'):
+    # print(f"development mode: {os.environ.get('MY_LOCAL_MACHINE')}")
+    # print(f"MY_LOCAL_REDIS_LOCATION (from env): {os.environ.get('MY_LOCAL_REDIS_LOCATION')}")
+    # print(f"MY_LOCAL_REDIS_LOCATION (from file): {credentials['MY_LOCAL_REDIS_LOCATION']}"),
+    # print(f"MY_REDIS_LOCATION (from file): {credentials['MY_REDIS_LOCATION']}"),
+    DEBUG = True # for development
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
     }
-}
+    # CACHES = {
+    #     "default": {
+    #         "BACKEND": "django_redis.cache.RedisCache",
+    #         "LOCATION": credentials['MY_LOCAL_REDIS_LOCATION'],
+    #         "OPTIONS": {
+    #             "CLIENT_CLASS": "django_redis.client.DefaultClient",
+    #         }
+    #     }
+    # }
+    # CACHES = {
+    #     "default": {
+    #         "BACKEND": "django_redis.cache.RedisCache",
+    #         "LOCATION": credentials['MY_REDIS_LOCATION'],
+    #         "OPTIONS": {
+    #             "CLIENT_CLASS": credentials['CLIENT_CLASS'],
+    #             "PASSWORD": credentials['PASSWORD'],
+    #         }
+    #     }
+    # }
+
+else:
+    DEBUG = False # production
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.mysql',
+            'NAME': credentials['MY_DB_NAME'],
+            'USER': credentials['MY_DB_USERNAME'],
+            'PASSWORD': credentials['MY_DB_PASSWORD'],
+            'HOST': credentials['MY_DB_HOST'],
+        }
+    }
+    # CACHES = {
+    #     "default": {
+    #         "BACKEND": "django_redis.cache.RedisCache",
+    #         "LOCATION": credentials['MY_LOCAL_REDIS_LOCATION'],
+    #         "OPTIONS": {
+    #             "CLIENT_CLASS": "django_redis.client.DefaultClient",
+    #         }
+    #     }
+    # }
+    # CACHES = {
+    #     "default": {
+    #         "BACKEND": "django_redis.cache.RedisCache",
+    #         "LOCATION": credentials['MY_REDIS_LOCATION'],
+    #         "OPTIONS": {
+    #             "CLIENT_CLASS": credentials['CLIENT_CLASS'],
+    #             "PASSWORD": credentials['PASSWORD'],
+    #         }
+    #     }
+    # }
+
+# ############### for tests ##############
+# DEBUG = True # for test
+# SERVE_STATIC_FILES = True  # for test
+# ALLOWED_HOSTS = ['*'] # for test
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.mysql',
+#         'OPTIONS': {
+#             'read_default_file': '../MySQL_credentials.cnf',
+#         },
+#     }
+# }
+# ########################################
 
 
 # Password validation
@@ -160,8 +241,12 @@ CSRF_TRUSTED_ORIGINS = [
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
-STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+# Added static variable here
+# STATICFILES_DIRS = [
+#     BASE_DIR / 'static',		# <- added static to BASE_DIR
+#     BASE_DIR / 'static/article_hive_project',		# <- added static to project dir.
+# ]
 
 AUTH_USER_MODEL = 'app_users.User'
 
