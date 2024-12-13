@@ -162,7 +162,9 @@ def users(request, pk=None):
 		print(f'region: {region}')
 		print(f'location: {location}')
 		if location == 'exist':
-			return Response({'msg': f'{_} for this region already exists'}, status=status.HTTP_200_OK)
+			exist = {'msg': f'{_} for this region already exists'}
+			print(f'response to exist: {exist}')
+			return Response(exist, status=status.HTTP_200_OK)
 		serializedUser = UserCreateSerializer(data=data)
 		# serializedRegion = RegionReadSerializer(data=data)
 		print(f'is serializedUser valid:', serializedUser.is_valid())
