@@ -14,7 +14,7 @@ from pathlib import Path
 import os, sys
 # sys.path.append(os.path.expanduser("~"))
 try:
-    from myCredentials import credentials
+    from .myCredentials import credentials
     print(f'credentials from server home dir:: {credentials}')
 except ImportError as e:
     print(f"Error importing credentials: {e}")
