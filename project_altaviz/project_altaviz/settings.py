@@ -16,8 +16,8 @@ import os, sys
 try:
     from myCredentials import credentials
     print(f'credentials from server home dir:: {credentials}')
-except:
-    pass
+except ImportError as e:
+    print(f"Error importing credentials: {e}")
 # print(f'credentials from server home dir:: {credentials}')
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
