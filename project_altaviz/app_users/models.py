@@ -152,41 +152,7 @@ class User(AbstractUser):
 					output.getbuffer().nbytes,
 					None
 				)
-
-		# # for deliveries
-		# # Before performing any operation with F expressions, ensure deliveries is an actual integer.
-		# if self.pk and isinstance(self.deliveries, int) and self.deliveries > 0:
-		# 	print(f'updating deliveries by 1 point ##########')
-		# 	getUser = User.objects.filter(email=self.email).first()
-		# 	print(f'for user: {getUser.email}')
-		# 	if getUser:
-		# 		print(f'found user: {getUser.email}')
-		# 		# Update the deliveries point of the existing user
-		# 		getUser.deliveries = F('deliveries') + self.deliveries
-		# 		getUser.save(update_fields=["deliveries"])
-		# 		print(f'updated deliveries field: {getUser.deliveries}')
-		# 		# Reset deliveries on the current instance to avoid double counting on re-save
-		# 		# self.deliveries = 0
-		# # 		return  # Prevent saving a new instance
-
-		# # If no existing component, proceed with saving the new instance
-
-		# print(f'creating new user. deliveries default value used ##########')
-		# Call the parent class's save method
 		super().save(*args, **kwargs)
-
-# class RequestDetailsChange(models.Model):
-#     custodian = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='requestuser')
-
-#     state = models.CharField(max_length=255, null=True, blank=True)
-#     branch = models.CharField(max_length=255, null=True, blank=True)
-#     location = models.CharField(max_length=255, null=True, blank=True)
-
-#     status = models.BooleanField(default=False)
-#     created_at = models.DateTimeField(auto_now_add=True)
-#     approved_at = models.DateTimeField(auto_now=True)
-#     def __str__(self) -> str:
-#         return f'details update request for: {self.custodian.first_name}'
 
 class UpdateLocationAndBranchNotification(models.Model):
 	newRegion = models.CharField(max_length=100, null=True, blank=True)

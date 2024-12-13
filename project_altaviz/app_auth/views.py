@@ -21,28 +21,31 @@ def loginView(request):
 		email = request.data.get('email')
 		password = request.data.get('password')
 		print(f'email: {email}\npassword: {password}')
-		user = User.objects.get(email=email)
+		user = User.objects.filter(email=email).first()
 		print(f'user: {user}')
-		print(f'user is active: {user.is_active}')
-		user = authenticate(email=email, password=password)
 		if user:
-			print(f'user exists: {user}')
-			if user.is_active:
-				print(f'user is active: {user.is_active}')
-				print(f'user role: 111111111111 {user.role}')
-				if user.role == 'custodian':
-					print(f'custodian: (views) {Custodian.objects.get(custodian=user)}')
-					print(f'custodian.first() (views): {Custodian.objects.first()}')
-				login(request, user)
-				serializer = UserReadSerializer(user)
-				response_data = serializer.data  # Serialized user data
-				print(f'user role: 22222222222 {user.role}')
-				return Response(response_data, status=status.HTTP_200_OK)
-				# return Response({"message": "Login successful"}, status=status.HTTP_200_OK)
+			print(f'user is active: {user.is_active}')
+			user = authenticate(email=email, password=password)
+			if user:
+				print(f'user exists: {user}')
+				if user.is_active:
+					print(f'user is active: {user.is_active}')
+					print(f'user role: 111111111111 {user.role}')
+					if user.role == 'custodian':
+						print(f'custodian: (views) {Custodian.objects.get(custodian=user)}')
+						print(f'custodian.first() (views): {Custodian.objects.first()}')
+					login(request, user)
+					serializer = UserReadSerializer(user)
+					response_data = serializer.data  # Serialized user data
+					print(f'user role: 22222222222 {user.role}')
+					return Response(response_data, status=status.HTTP_200_OK)
+					# return Response({"message": "Login successful"}, status=status.HTTP_200_OK)
+				else:
+					return Response({"message": "Your account is not active"}, status=status.HTTP_403_FORBIDDEN)
 			else:
-				return Response({"message": "Your account is not active"}, status=status.HTTP_403_FORBIDDEN)
+				return Response({"message": "Invalid credentials"}, status=status.HTTP_404_NOT_FOUND)
 		else:
-			return Response({"message": "Invalid credentials"}, status=status.HTTP_404_NOT_FOUND)
+			return Response({"message": "Account does not exist"}, status=status.HTTP_404_NOT_FOUND)
 
 @api_view(['POST'])
 def logoutView(request):

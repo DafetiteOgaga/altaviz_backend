@@ -9,7 +9,7 @@ urlpatterns = [
     # details update request by users
     path('user-details-update/<int:pk>/', view=views.userDetaileUpdate, name='userDetaileUpdate'),
 
-    # notification for update request human resource and approving/rejecting the request
+    # notification for update request human-resource and approving/rejecting the request
     path('approve-user-details-update/<int:pk>/', view=views.approvedDetailsChange, name='approvedDetailsChange'),
     path('approve-user-details-update/<str:type>/<int:pk>/', view=views.approvedDetailsChange, name='approvedDetailsChange-type'),
     path('approve-user-details-update/<int:pk>/total/', view=views.totalApprovedDetailsChange, name='totalApprovedDetailsChange'),
@@ -21,6 +21,10 @@ urlpatterns = [
     path('new-location-assignment/<int:pk>/', view=views.assignEngineerToLocation, name='assignEngineerToLocation'),
     path('new-location-assignment/<str:type>/<int:pk>/', view=views.assignEngineerToLocation, name='assignEngineerToLocation-type'),
     path('new-location-assignment/<int:pk>/total/', view=views.totalAssignEngineerToLocation, name='totalAssignEngineerToLocation'),
+
+    # path('all-regions/<int:pk>/', view=views.getRegions, name='getRegions'),
+
+
 	# # Create your urlpatterns here.
 	# # authentication
 	# path('login/', views.login_page, name='login'),

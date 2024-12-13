@@ -675,7 +675,7 @@ def regionUserRequests(request, pk=None, type=None):
 	print('##################### regionUserRequests ###########################')
 	# Get the help-desk user
 	user = User.objects.get(pk=pk)
-	# get the region of the help desk
+	# get the region of the help-desk
 	region = user.region
 	print(f'help-desk/supervisor: {user}')
 	print(f'region: {region}')
@@ -1196,9 +1196,9 @@ def allUserRequests(request, pk=None, type=None):
 	print('##################### regionUserRequests ###########################')
 	# Get the help-desk user
 	user = User.objects.get(pk=pk)
-	# get the region of the help desk
+	# get the region of the help-desk
 	role = user.role
-	print(f'human resource: {user}')
+	print(f'human-resource: {user}')
 	print(f'role: {role}')
 	print()
 

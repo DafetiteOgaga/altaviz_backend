@@ -28,16 +28,3 @@ class Custodian(models.Model):
 		ordering = ['id']
 	def __str__(self) -> str:
 		return f'custodian {self.custodian.email} for {self.branch.name}'
-
-# class RequestDetailsChange(models.Model):
-#     custodian = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='requestuser')
-
-#     state = models.CharField(max_length=255, null=True, blank=True)
-#     branch = models.CharField(max_length=255, null=True, blank=True)
-#     location = models.CharField(max_length=255, null=True, blank=True)
-
-#     status = models.BooleanField(default=False)
-#     created_at = models.DateTimeField(auto_now_add=True)
-#     approved_at = models.DateTimeField(auto_now=True)
-#     def __str__(self) -> str:
-#         return f'details update request for: {self.custodian.first_name}'

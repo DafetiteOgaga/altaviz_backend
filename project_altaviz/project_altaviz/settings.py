@@ -12,9 +12,11 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 
 from pathlib import Path
 import os, sys
-# Your GitHub personal access token
-sys.path.append(os.path.expanduser("~"))
-from credentials import credentials
+# sys.path.append(os.path.expanduser("~"))
+try:
+    from myCredentials import credentials
+except:
+    pass
 # print(f'credentials from server home dir:: {credentials}')
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
