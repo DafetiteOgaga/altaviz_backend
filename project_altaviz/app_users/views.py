@@ -142,9 +142,12 @@ def users(request, pk=None):
 	if request.method == 'POST':
 		print('USER payload:', request.data)
 		# print(f'the pk is:', pk)
-		data = request.data.copy()
+		# data = request.data.copy()
 		# location = Location.objects.get_or_create()
-		data['profile_picture'] = None if data['profile_picture'] == 'null' or data['profile_picture'] == 'undefined' else data['profile_picture']
+		# data['profile_picture'] = None if data['profile_picture'] == 'null' or data['profile_picture'] == 'undefined' else data['profile_picture']
+		data = request.data.dict() if not isinstance(request.data, dict) else request.data
+		print(f'data: {data}')
+		data['profile_picture'] = None if data.get('profile_picture') in ['null', 'undefined'] else request.FILES.get('profile_picture')
 		print(f'profile_picture: {data["profile_picture"]}')
 		requestObject = {
 			############ using the bank's region in place of request.data region ############
@@ -175,7 +178,7 @@ def users(request, pk=None):
 			print(f'role:', role)
 			user = serializedUser.save()
 			print('user saved successfully')
-			if role == 'engineer' or role == 'supervisor' or role == 'help-desk':
+			if role == 'engineer' or role == 'supervisor' or role == 'help-desk' or role == 'human-resource':
 				print(f'user: {user}')
 				print(f'user id: {user.id}')
 				print(f'user role: {user.role}')
@@ -183,7 +186,7 @@ def users(request, pk=None):
 				if role == 'engineer':
 					engineer = Engineer.objects.create(engineer=user, location=location)
 					print(f'created: {engineer}')
-				else:
+				elif role == 'supervisor' or role == 'help-desk':
 					checkRegion =  Region.objects.filter(name=region.name).first()
 					if checkRegion:
 						if not checkRegion.supervisor and role == 'supervisor':
@@ -192,6 +195,10 @@ def users(request, pk=None):
 							checkRegion.helpdesk = user
 						checkRegion.save()
 						print(f'assigned {user.username} with {user.role} role to {region.name}')
+				elif role == 'human-resource':
+					print(f'user: {user}')
+					print(f'user id: {user.id}')
+					print(f'user role: {user.role}')
 				return Response({'msg': 'Account Created'}, status=status.HTTP_201_CREATED)
 			elif role == 'custodian':
 				_, location, branch = getOrCreateBankLocationBranch(
