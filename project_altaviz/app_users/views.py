@@ -53,6 +53,7 @@ def getOrCreateBankLocationBranch(strObj: dict=None, user: object=None):
 	## region
 	## region = Region.objects.get(name=strObj['regionStr'])
 	# print(f'region: {region}')
+	print(f'strObj: {strObj}')
 
 	# state
 	state = State.objects.get(name=strObj['stateStr'])
@@ -60,42 +61,59 @@ def getOrCreateBankLocationBranch(strObj: dict=None, user: object=None):
 	region = state.region
 	print(f"region (state's): {region}")
 
-	bank, bCreated = Bank.objects.get_or_create(name=strObj['bankStr'])
-	if bCreated: bank.states.add(state)
-	print(f'bank: {bank}')
-	print(f'new bank: {bCreated}')
+	print(f'''help-desk: {strObj['fERole'] == "help-desk"}''')
+	print(f'''supervisor: {strObj['fERole'] == "supervisor"}''')
+	if strObj['fERole'] == 'supervisor' or strObj['fERole'] == 'help-desk':
+		print(f"role: {strObj['fERole']}")
+		print(f'region.supervisor: {region.supervisor}')
+		print(f'region.helpdesk: {region.helpdesk}')
+		if region.supervisor:
+			return 'exist', 'exist', strObj['fERole']
+		if region.helpdesk:
+			return 'exist', 'exist', strObj['fERole']
+
+	bank = None
+	if strObj['bankStr']:
+		bank, bCreated = Bank.objects.get_or_create(name=strObj['bankStr'])
+		if bCreated: bank.states.add(state)
+		print(f'bank: {bank}')
+		print(f'new bank: {bCreated}')
 
 	location, new = Location.objects.get_or_create(
 		location=strObj['locationStr'],
 		state=state,
 		region=region,
 	)
-	print(f'location (no new bank): {location}')
+	print(f'location (no new bank added yet): {location}')
 	print(f'new location: {new}')
 	if new:
-		location.bank.add(bank)
-		supervisor = User.objects.get(region=region, role='supervisor')
-		print(f'Supervisor: {supervisor.email}')
-		print(f'Supervisor role: {supervisor.role}')
-		print(f'Supervisor id: {supervisor.id}')
-		triggerSupervisorNotification = PatchEngineerAssignmentNotificaionSerializer(
-			data={'supervisor': supervisor.id, 'location': location.id}
-		)
-		print(f'triggerSupervisorNotification is valid: {triggerSupervisorNotification.is_valid()}')
-		if triggerSupervisorNotification.is_valid():
-			triggerSupervisorNotification.save()
-			print('Notification sent successfully &&&&&&&&&&&')
-			print('start send_websocket_notification ##########')
-			send_websocket_notification(f'assigned engineer to new location-{region}')
-			print('end send_websocket_notification ##########')
+		if strObj['bankStr']: location.bank.add(bank)
+		supervisor = User.objects.filter(region=region, role='supervisor').first()
+		if supervisor:
+			print(f'Supervisor: {supervisor.email}')
+			print(f'Supervisor role: {supervisor.role}')
+			print(f'Supervisor id: {supervisor.id}')
+			triggerSupervisorNotification = PatchEngineerAssignmentNotificaionSerializer(
+				data={'supervisor': supervisor.id, 'location': location.id}
+			)
+			print(f'triggerSupervisorNotification is valid: {triggerSupervisorNotification.is_valid()}')
+			if triggerSupervisorNotification.is_valid():
+				triggerSupervisorNotification.save()
+				print('Notification sent successfully &&&&&&&&&&&')
+				print('start send_websocket_notification ##########')
+				send_websocket_notification(f'assigned engineer to new location-{region}')
+				print('end send_websocket_notification ##########')
+			else:
+				print(f'triggerSupervisorNotification error: {triggerSupervisorNotification.errors}')
+				print('notification unsuccessful &&&&&&&&&&&')
+			###################################################################################################
+			# trigger a model that sends a notification to the supervisor to assign an enineer to that location
+			###################################################################################################
+			print(f'location (with new bank): {location}')
 		else:
-			print(f'triggerSupervisorNotification error: {triggerSupervisorNotification.errors}')
-			print('notification unsuccessful &&&&&&&&&&&')
-		###################################################################################################
-		# trigger a model that sends a notification to the supervisor to assign an enineer to that location
-		###################################################################################################
-		print(f'location (with new bank): {location}')
-	if user and strObj['branchStr'] != '':
+			print(f'no supervisor found for {region} region')
+			print('so supervisor notifications to assign an enineer to new location not triggered')
+	if user and strObj['branchStr']:
 		branch, _ = Branch.objects.get_or_create(
 			name=strObj['branchStr'],
 			custodian=user,
@@ -113,8 +131,8 @@ def getOrCreateBankLocationBranch(strObj: dict=None, user: object=None):
 		print(f'branch bank: {branch.bank.name}')
 		print(f'branch state: {branch.state.name}')
 		print(f'branch location: {branch.location.location}')
-		return location, branch
-	return location
+		return region, location, branch
+	return region, location, 'no branch'
 
 @api_view(['GET', 'POST'])
 def users(request, pk=None):
@@ -133,13 +151,18 @@ def users(request, pk=None):
 			# 'regionStr': request.data['region'],
 			#################################################################################
 			'stateStr': request.data['state'],
-			'bankStr': data['bank'],
+			'bankStr': None if data['bank'] == '' else data['bank'],
 			'locationStr': data['location'],
-			'branchStr': request.data['branch'],
+			'branchStr': None if request.data['branch'] == '' else request.data['branch'],
+			'fERole': data['role'],
 		}
-		location = getOrCreateBankLocationBranch(
+		print(f'requestObject: {requestObject}')
+		region, location, _ = getOrCreateBankLocationBranch(
 						strObj=requestObject)
+		print(f'region: {region}')
 		print(f'location: {location}')
+		if location == 'exist':
+			return Response({'msg': f'{_} for this region already exists'}, status=status.HTTP_200_OK)
 		serializedUser = UserCreateSerializer(data=data)
 		# serializedRegion = RegionReadSerializer(data=data)
 		print(f'is serializedUser valid:', serializedUser.is_valid())
@@ -150,11 +173,26 @@ def users(request, pk=None):
 			print(f'role:', role)
 			user = serializedUser.save()
 			print('user saved successfully')
-			if role != 'custodian':
+			if role == 'engineer' or role == 'supervisor' or role == 'help-desk':
+				print(f'user: {user}')
 				print(f'user id: {user.id}')
+				print(f'user role: {user.role}')
+				# user = User.objects.get(email=data['email'])
+				if role == 'engineer':
+					engineer = Engineer.objects.create(engineer=user, location=location)
+					print(f'created: {engineer}')
+				else:
+					checkRegion =  Region.objects.filter(name=region.name).first()
+					if checkRegion:
+						if not checkRegion.supervisor and role == 'supervisor':
+							checkRegion.supervisor = user
+						elif not checkRegion.helpdesk and role == 'help-desk':
+							checkRegion.helpdesk = user
+						checkRegion.save()
+						print(f'assigned {user.username} with {user.role} role to {region.name}')
 				return Response({'msg': 'Account Created'}, status=status.HTTP_201_CREATED)
-			else:
-				location, branch = getOrCreateBankLocationBranch(
+			elif role == 'custodian':
+				_, location, branch = getOrCreateBankLocationBranch(
 								strObj=requestObject, user=user)
 				print(f'location: {location}')
 				print(f'branch: {branch}')
@@ -397,7 +435,7 @@ def approvedDetailsChange(request, pk=None, type=None):
 			'locationStr': requestObject.newLocation,
 			'branchStr': requestObject.newBranch,
 		}
-		location, branch = getOrCreateBankLocationBranch(
+		_, location, branch = getOrCreateBankLocationBranch(
 						strObj=newRequestObject, user=user)
 		print(f'location: {location}')
 		print(f'branch: {branch}')
@@ -509,7 +547,7 @@ def assignEngineerToLocation(request, pk=None, type=None):
 			branch = Branch.objects.filter(location=newLocation)
 			print(f'check branch: {branch}')
 			print(f'check engineer: {Engineer.objects.filter(location=newLocation)}')
-			assignedEngineer = Engineer.objects.create(
+			assignedEngineer = Engineer.objects.get_or_create(
 				engineer=engineer,
                 location=newLocation,
 			)
@@ -572,3 +610,12 @@ def totalAssignEngineerToLocation(request, pk=None):
 		print(f'total length of update request: {len(notifications)}')
 		return Response({'total': len(notifications)}, status=status.HTTP_200_OK)
 	return Response({'msg': 'No notifications'}, status=status.HTTP_200_OK)
+
+# @api_view(['GET'])
+# def getRegions(request, pk=None):
+#     print(f'pk: {pk}')
+#     regions = Region.objects.all()
+#     print(f'regions: {regions}')
+#     serializedRegions = RegionAloneSerializer(instance=regions, many=True).data
+#     print(f'serializedregions: {serializedRegions}')
+#     return Response(serializedRegions, status=status.HTTP_200_OK)
