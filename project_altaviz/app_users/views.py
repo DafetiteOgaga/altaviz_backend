@@ -275,8 +275,9 @@ def userDetaileUpdate(request, pk=None):
 		# passes the value 'new' indicating new branch and location
 		####################################################
 		####################################################
+		valNew = 'new'
 		if user.role == 'custodian':
-			valNew = 'new'
+			# valNew = 'new'
 			if request.data["newBranch"] == valNew or request.data["newLocation"] == valNew:
 				userLocation = valNew
 			else:
