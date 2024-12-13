@@ -7,7 +7,7 @@ from app_fault.models import Fault
 from app_fault.serializers import FaultReadSerializer
 from app_inventory.models import RequestPart, RequestComponent
 from app_inventory.serializers import RequestFaultComponentReadSerializer, RequestFaultPartReadSerializer
-from app_users.models import User
+from app_users.models import User, Region
 from django.db.models import Q, QuerySet
 from django.utils.dateparse import parse_datetime
 from django.utils import timezone
@@ -467,6 +467,7 @@ def queryDB(request):
 	queryState = None if (request.query_params.get('qstate') == '' or request.query_params.get('qstate') == 'undefined') else request.query_params.get('qstate')
 	queryBank = None if (request.query_params.get('qbank') == '' or request.query_params.get('qbank') == 'undefined') else request.query_params.get('qbank')
 	queryLocation = None if (request.query_params.get('qlocation') == '' or request.query_params.get('qlocation') == 'undefined') else request.query_params.get('qlocation')
+	qrole = None if (request.query_params.get('qrole') == '' or request.query_params.get('qrole') == 'undefined') else request.query_params.get('qrole')
 
 	print(f'queryText: {queryText}')
 	print(f'queryType: {queryType}')
@@ -474,7 +475,17 @@ def queryDB(request):
 	print(f'queryState: {queryState}')
 	print(f'queryBank: {queryBank}')
 	print(f'queryLocation: {queryLocation}')
+	print(f'qrole: {qrole}')
 	resultCount = 0
+	if queryType == 'region':
+		resultCount = Region.objects.filter(name=queryText).first()
+		if resultCount:
+			if qrole == 'help desk':
+				resultCount = resultCount.helpdesk
+			elif qrole == 'supervisor':
+				resultCount = resultCount.supervisor
+		print(f'user: {resultCount}')
+		resultCount = int(resultCount.id) if resultCount is not None else 0
 	if queryType == 'email':
 		resultCount = User.objects.filter(email=queryText).count()
 	if queryType == 'username':
