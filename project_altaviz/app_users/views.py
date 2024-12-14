@@ -3,6 +3,7 @@ from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from .models import *
+from app_deliveries.models import Deliveries
 from app_bank.models import *
 from app_bank.serializers import *
 from app_custodian.models import Custodian
@@ -181,6 +182,7 @@ def users(request, pk=None):
 			print(f'role:', role)
 			user = serializedUser.save()
 			print('user saved successfully')
+			Deliveries.objects.create(user=user)
 			if role == 'engineer' or role == 'supervisor' or role == 'help-desk' or role == 'human-resource':
 				print(f'user: {user}')
 				print(f'user id: {user.id}')
