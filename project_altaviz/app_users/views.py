@@ -142,12 +142,15 @@ def users(request, pk=None):
 	if request.method == 'POST':
 		print('USER payload:', request.data)
 		# print(f'the pk is:', pk)
-		# data = request.data.copy()
-		# location = Location.objects.get_or_create()
-		# data['profile_picture'] = None if data['profile_picture'] == 'null' or data['profile_picture'] == 'undefined' else data['profile_picture']
-		data = request.data.dict() if not isinstance(request.data, dict) else request.data
-		print(f'data: {data}')
-		data['profile_picture'] = None if data.get('profile_picture') in ['null', 'undefined'] else request.FILES.get('profile_picture')
+		if request.data['profile_picture'] in ['null', 'undefined']:
+			data = request.data.copy()
+			data['profile_picture'] = None
+		else:
+			print(f'isinstance(request.data, dict):', isinstance(request.data, dict))
+			data = request.data
+			# print(f'data: {data}')
+			# data['profile_picture'] = request.FILES.get('profile_picture')
+		print(f'data222: {data}')
 		print(f'profile_picture: {data["profile_picture"]}')
 		requestObject = {
 			############ using the bank's region in place of request.data region ############
