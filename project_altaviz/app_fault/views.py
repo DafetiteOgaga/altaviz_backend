@@ -486,11 +486,15 @@ def regionFaults(request, pk=None, type=None):
 			faultCompRequest = faultRequests.componentfault.all()
 			faultPartRequest = faultRequests.partfault.all()
 
-			faultCompRequestSerializer = RequestFaultComponentReadSerializer(instance=faultCompRequest, many=True)
-			faultPartRequestSerializer = RequestFaultPartReadSerializer(instance=faultPartRequest, many=True)
+			faultCompRequestSerializer = RequestFaultComponentReadSerializer(instance=faultCompRequest, many=True).data
+			for component in faultCompRequestSerializer:
+				component['type'] = 'component'
+			faultPartRequestSerializer = RequestFaultPartReadSerializer(instance=faultPartRequest, many=True).data
+			for part in faultPartRequestSerializer:
+				part['type'] = 'part'
 
-			item['requestComponent'] = faultCompRequestSerializer.data if faultCompRequestSerializer.data else False
-			item['requestPart'] = faultPartRequestSerializer.data if (faultPartRequestSerializer.data or faultPartRequestSerializer.data) else False
+			item['requestComponent'] = faultCompRequestSerializer if faultCompRequestSerializer else False
+			item['requestPart'] = faultPartRequestSerializer if faultPartRequestSerializer else False
 		item['requestStatus'] = bool(partRequestExist) or bool(componentRequestExist)
 	if type == 'list':
 		print(f'length of faultSerializer: {len(faultSerializer)}')
@@ -590,10 +594,14 @@ def custodianUnresolvedFaults(request, pk=None, type=None):
 			faultPartRequest = faultRequests.partfault.all()
 			# print(f'	faultCompRequest: {[request.id for request in faultCompRequest]}')
 			# print(f'	faultPartRequest: {[part.id for part in faultPartRequest]}')
-			faultCompRequestSerializer = RequestFaultComponentReadSerializer(instance=faultCompRequest, many=True)
-			faultPartRequestSerializer = RequestFaultPartReadSerializer(instance=faultPartRequest, many=True)
-			item['requestComponent'] = faultCompRequestSerializer.data if faultCompRequestSerializer.data else False
-			item['requestPart'] = faultPartRequestSerializer.data if (faultPartRequestSerializer.data) else False
+			faultCompRequestSerializer = RequestFaultComponentReadSerializer(instance=faultCompRequest, many=True).data
+			for component in faultCompRequestSerializer:
+				component['type'] = 'component'
+			faultPartRequestSerializer = RequestFaultPartReadSerializer(instance=faultPartRequest, many=True).data
+			for part in faultPartRequestSerializer:
+				part['type'] = 'part'
+			item['requestComponent'] = faultCompRequestSerializer if faultCompRequestSerializer else False
+			item['requestPart'] = faultPartRequestSerializer if (faultPartRequestSerializer) else False
 		item['requestStatus'] = True if any([partRequestExist, componentRequestExist]) else False
 	if type == 'list':
 		print(f'length of faultSerializer: {len(faultSerializer)}')

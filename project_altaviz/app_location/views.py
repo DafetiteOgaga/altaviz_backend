@@ -66,6 +66,8 @@ def bankRegionLocations(request, pk=None, state=None, bank=None):
 def RegionLocations(request, pk=None, state=None):
     print(f'pk: {pk}')
     print(f'state: {state}')
+    # user = User.objects.get(pk=pk)
+    # print(f'user obj and role: {user} is a {user.role} expert')
     locationList = []
     region = Region.objects.prefetch_related('regionstates__statelocations').get(pk=pk)
     print(f'region: {region.name}')
