@@ -472,7 +472,11 @@ def requestComponent(request, pk=None, type=None):
 			# get this pagiated data using getpagination custom hook
 			user = User.objects.get(pk=pk)
 			print(f'user obj: {user}')
-			userRequest = RequestComponent.objects.filter(user=user, approved=False, rejected=False)
+			userRequest = RequestComponent.objects.filter(
+				user=user, approved=False, rejected=False,
+				fault__confirm_resolve=False
+			)
+			print(f'user request: {userRequest}')
 			componentSerializer = RequestComponentReadSerializer(instance=userRequest, many=True).data
 			for component in componentSerializer:
 				component['type'] = 'component'
@@ -610,10 +614,13 @@ def requestPart(request, pk=None, type=None):
 			# get this pagiated data using getpagination custom hook
 			user = User.objects.get(pk=pk)
 			print(f'user obj: {user}')
-			partRequest = RequestPart.objects.filter(user=user, approved=False, rejected=False)
+			partRequest = RequestPart.objects.filter(
+				user=user, approved=False, rejected=False,
+				fault__confirm_resolve=False
+			)
 			partSerializer = RequestPartReadSerializer(instance=partRequest, many=True).data
 			for part in partSerializer:
-				part['type'] = '[part]'
+				part['type'] = 'part'
 			# print(f'user: {user}')
 			if type == 'list':
 				print(f'length of partSerializer: {len(partSerializer)}')
