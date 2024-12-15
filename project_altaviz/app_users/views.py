@@ -90,7 +90,9 @@ def getOrCreateBankLocationBranch(strObj: dict=None, user: object=None):
 	print(f'location (no new bank added yet): {location}')
 	print(f'new location: {new}')
 	if new:
+		print(f'location (before): {location}')
 		if strObj['bankStr']: location.bank.add(bank)
+		print(f'location (after): {location}')
 		supervisor = User.objects.filter(region=region, role='supervisor').first()
 		if supervisor:
 			print(f'Supervisor: {supervisor.email}')
@@ -185,7 +187,7 @@ def users(request, pk=None):
 			user = serializedUser.save()
 			print('user saved successfully')
 			Deliveries.objects.create(user=user)
-			if role == 'engineer' or role == 'supervisor' or role == 'help-desk' or role == 'human-resource':
+			if role == 'engineer' or role == 'supervisor' or role == 'help-desk' or role == 'human-resource' or role == 'workshop':
 				print(f'user: {user}')
 				print(f'user id: {user.id}')
 				print(f'user role: {user.role}')
@@ -202,7 +204,7 @@ def users(request, pk=None):
 							checkRegion.helpdesk = user
 						checkRegion.save()
 						print(f'assigned {user.username} with {user.role} role to {region.name}')
-				elif role == 'human-resource':
+				elif role == 'human-resource' or role == 'workshop':
 					print(f'user: {user}')
 					print(f'user id: {user.id}')
 					print(f'user role: {user.role}')
