@@ -62,15 +62,17 @@ def getOrCreateBankLocationBranch(strObj: dict=None, user: object=None):
 	region = state.region
 	print(f"region (state's): {region}")
 
-	print(f'''help-desk: {strObj['fERole'] == "help-desk"}''')
-	print(f'''supervisor: {strObj['fERole'] == "supervisor"}''')
-	if strObj['fERole'] == 'supervisor' or strObj['fERole'] == 'help-desk':
+	supervisorStr = strObj['fERole'] == "supervisor"
+	helpdeskStr = strObj['fERole'] == "help-desk"
+	print(f'help-desk (strObj): {helpdeskStr}')
+	print(f'supervisor (strObj): {supervisorStr}')
+	if supervisorStr or helpdeskStr:
 		print(f"role: {strObj['fERole']}")
 		print(f'region.supervisor: {region.supervisor}')
 		print(f'region.helpdesk: {region.helpdesk}')
-		if region.supervisor:
+		if region.supervisor and supervisorStr:
 			return 'exist', 'exist', strObj['fERole']
-		if region.helpdesk:
+		elif region.helpdesk and helpdeskStr:
 			return 'exist', 'exist', strObj['fERole']
 
 	bank = None
