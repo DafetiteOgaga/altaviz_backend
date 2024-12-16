@@ -1,5 +1,18 @@
 from datetime import datetime
-from firebase_admin import db
+import firebase_admin
+from firebase_admin import credentials, db
+import os
+
+# Dynamically construct the path to the credentials file
+homePath = os.path.expanduser('~')
+firebase_cred_path = os.path.join(homePath, 'firebase-admin.json')
+
+# firebase_utils.py
+if not firebase_admin._apps:
+    cred = credentials.Certificate(firebase_cred_path)  # Adjust the path
+    firebase_admin.initialize_app(cred, {
+        "databaseURL": "https://altaviz-notifications-default-rtdb.firebaseio.com/"
+    })
 
 def send_notification(user_id, message):
 	"""
