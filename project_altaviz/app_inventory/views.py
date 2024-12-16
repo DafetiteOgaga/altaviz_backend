@@ -8,6 +8,7 @@ from rest_framework.pagination import PageNumberPagination
 from app_fault.views import engineerPendingFaults
 from django.db.models import Q, Prefetch
 # from app_sse_notification.views import send_sse_notification
+from app_sse_notification.firebase_utils import send_notification
 from app_sse_notification.utils import send_websocket_notification
 
 def compartmentalizedList(listValue: list):
@@ -437,6 +438,7 @@ def requestComponent(request, pk=None, type=None):
 		print(f'len responseInstances: {len(responseInstances)}')
 		print(f'response: {response}')
 		print('start send_websocket_notification ##########')
+		send_notification(user_id=4, message=f'make component request-{region}')
 		send_websocket_notification(f'make component request-{region}')
 		print('end send_websocket_notification ##########')
 		return Response({'msg': f'{response} Received.', 'responseObjs': responseInstances}, status=status.HTTP_200_OK)
