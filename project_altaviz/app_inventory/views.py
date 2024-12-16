@@ -438,7 +438,7 @@ def requestComponent(request, pk=None, type=None):
 		print(f'len responseInstances: {len(responseInstances)}')
 		print(f'response: {response}')
 		print('start send_websocket_notification ##########')
-		send_notification(user_id=4, message=f'make component request-{region}')
+		send_notification(user_id=5, message=f'make component request-{region}')
 		send_websocket_notification(f'make component request-{region}')
 		print('end send_websocket_notification ##########')
 		return Response({'msg': f'{response} Received.', 'responseObjs': responseInstances}, status=status.HTTP_200_OK)
