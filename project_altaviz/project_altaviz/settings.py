@@ -272,8 +272,11 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 # logon local server to test it
 # websocat ws://127.0.0.1:8000/ws/notifications/
 
-# Initialize Firebase Admin
-cred = credentials.Certificate("./firebase-admin.json")
-firebase_admin.initialize_app(cred, {
-    "databaseURL": "https://altaviz-notifications-default-rtdb.firebaseio.com/"
-})
+# Initialize Firebase Admin only if needed
+if "runserver" in sys.argv or "gunicorn" in os.environ.get("SERVER_SOFTWARE", "").lower():
+    # Initialize Firebase
+    # PythonAnywhere uses Gunicorn as the WSGI server, so SERVER_SOFTWARE will include "gunicorn".
+    cred = credentials.Certificate("./firebase-admin.json")  # Adjust path if needed
+    firebase_admin.initialize_app(cred, {
+        "databaseURL": "https://altaviz-notifications-default-rtdb.firebaseio.com/"
+    })
