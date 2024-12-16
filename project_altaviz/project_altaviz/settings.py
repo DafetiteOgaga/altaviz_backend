@@ -12,6 +12,8 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 
 from pathlib import Path
 import os, sys
+import firebase_admin
+from firebase_admin import credentials, db
 # sys.path.append(os.path.expanduser("~"))
 try:
     from .myCredentials import credentials
@@ -22,7 +24,6 @@ except ImportError as e:
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
@@ -270,3 +271,9 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # logon local server to test it
 # websocat ws://127.0.0.1:8000/ws/notifications/
+
+# Initialize Firebase Admin
+cred = credentials.Certificate("./firebase-admin.json")
+firebase_admin.initialize_app(cred, {
+    "databaseURL": "https://altaviz-notifications-default-rtdb.firebaseio.com/"
+})
