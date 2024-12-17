@@ -27,7 +27,9 @@ def send_notification(user_id, message):
 	print(f'message: {message}')
 	# Define the path in Firebase
 	ref = db.reference(f"notifications/{user_id}")
-	print(f'the ref data: {ref}')
+	print(f'the referenced location: {ref}')
+	data = ref.get()
+	print("Data at the reference:", data)  # Prints the data stored at the reference
 
 	# Push and replace the notification in Firebase
 	try:
