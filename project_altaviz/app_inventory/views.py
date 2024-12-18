@@ -9,7 +9,6 @@ from app_fault.views import engineerPendingFaults
 from django.db.models import Q, Prefetch
 # from app_sse_notification.views import send_sse_notification
 from app_sse_notification.firebase_utils import send_notification
-from app_sse_notification.utils import send_websocket_notification
 
 def compartmentalizedList(listValue: list):
 	newDict = {}
@@ -76,7 +75,7 @@ def componentName(request, pk=None):
 				print(f'component inventory posted by: {componentInventory.user}')
 				componentInventory.save()
 				print('component inventory updated.')
-				send_websocket_notification('added component name to inventory')
+				send_notification(message='added component name to inventory')
 				return Response(serializer.data, status=status.HTTP_201_CREATED)
 			print(f'serializer.errors: {serializer.errors}')
 			return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -118,7 +117,7 @@ def components(request, pk=None):
 					print(f'saved: {dicttn}')
 				if length != 0:
 					continue
-				send_websocket_notification('updated component in inventory')
+				send_notification(message='updated component in inventory')
 				return Response({'success': 'Success: Inventory has been updated.'}, status=status.HTTP_201_CREATED)
 			print(f'serializer.errors: {serializer.errors}')
 			return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -186,7 +185,7 @@ def partName(request, pk=None):
 				print(f'part inventory posted by: {partInventory.user}')
 				partInventory.save()
 				print('part inventory updated.')
-				send_websocket_notification('added part name to inventory')
+				send_notification(message='added part name to inventory')
 				return Response(serializer.data, status=status.HTTP_201_CREATED)
 			print(f'serializer.errors: {serializer.errors}')
 			return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -228,7 +227,7 @@ def parts(request, pk=None):
 					print(f'saved: {dicttn}')
 				if length != 0:
 					continue
-				send_websocket_notification('updated part in inventory')
+				send_notification(message='updated part in inventory')
 				return Response({'success': 'Success: Inventory has been updated.'}, status=status.HTTP_201_CREATED)
 			print(f'serializer.errors: {serializer.errors}')
 			return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -280,9 +279,9 @@ def unapprovedPart(request, pk=None, type=None):
 			else:
 				print(f'ptSerializer error: {ptSerializer.errors}')
 				return Response({'error': 'Could not complete.'}, status=status.HTTP_201_CREATED)
-		print('start send_websocket_notification ##########')
-		send_websocket_notification('fixed part ready-hr')
-		print('end send_websocket_notification ##########')
+		print('start send_notification ##########')
+		send_notification(message='fixed part ready-hr')
+		print('end send_notification ##########')
 		print('################# end unapprovedPart #################')
 		return Response({'received': 'Awaits approval.'}, status=status.HTTP_201_CREATED)
 	elif request.method == 'PATCH':
@@ -305,10 +304,9 @@ def unapprovedPart(request, pk=None, type=None):
 		part.save()
 		print(f'status (after)=> approved: {part.approved}, rejected: {part.rejected}')
 		reaponse = 'approved' if part.approved else 'rejected'
-		print('start send_websocket_notification ##########')
-		send_websocket_notification(f'approve or reject fixed parts-hr')
-		print('end send_websocket_notification ##########')
-		# print(f'triggered send_websocket_notification #####################')
+		print('start send_notification ##########')
+		send_notification(message='approve or reject fixed parts-hr')
+		print('end send_notification ##########')
 		return Response({'msg': reaponse}, status=status.HTTP_200_OK)
 	elif request.method == 'GET':
 		print('################# user unapprovedPart noti #################')
@@ -355,7 +353,7 @@ def deleteUnapprovedPart(request, pk=None):
 		item = UnconfirmedPart.objects.get(pk=pk)
 		print(f'deleting ... : {item}')
 		item.delete()
-		send_websocket_notification('fixed part deleted')
+		send_notification(message='fixed part deleted')
 		return Response({'msg': 'Posted Part deleted successfully.'}, status=status.HTTP_204_NO_CONTENT)
 	except UnconfirmedPart.DoesNotExist:
 		return Response({'msg': 'Part does not exist.'}, status=status.HTTP_404_NOT_FOUND)
@@ -437,10 +435,9 @@ def requestComponent(request, pk=None, type=None):
 		print(f'length of requests: {_}')
 		print(f'len responseInstances: {len(responseInstances)}')
 		print(f'response: {response}')
-		print('start send_websocket_notification ##########')
-		send_notification(user_id=5, message=f'make component request-{region}')
-		send_websocket_notification(f'make component request-{region}')
-		print('end send_websocket_notification ##########')
+		print('start send_notification ##########')
+		send_notification(message=f'make component request-{region}')
+		print('end send_notification ##########')
 		return Response({'msg': f'{response} Received.', 'responseObjs': responseInstances}, status=status.HTTP_200_OK)
 	elif request.method == 'PATCH':
 		# note: only workshop would not require fault field
@@ -462,9 +459,9 @@ def requestComponent(request, pk=None, type=None):
 			updatedComponentRequest = RequestComponent.objects.get(pk=request.data['faultID'])
 			print(f'status (after)=> approved: {updatedComponentRequest.approved}, rejected: {updatedComponentRequest.rejected}')
 			reaponse = 'approved' if updatedComponentRequest.approved else 'rejected'
-			print('start send_websocket_notification ##########')
-			send_websocket_notification(f'approve/reject component request-{region}')
-			print('end send_websocket_notification ##########')
+			print('start send_notification ##########')
+			send_notification(message=f'approve/reject component request-{region}')
+			print('end send_notification ##########')
 			return Response({'msg': reaponse}, status=status.HTTP_200_OK)
 			# return Response({'msg': 'Success'}, status=status.HTTP_200_OK)
 		print(f'serializedComponentRequest.error: {serializedComponentRequest.errors}')
@@ -517,7 +514,7 @@ def deleteCompRequest(request, pk=None):
 		return Response({'error': 'compRequest not found'}, status=status.HTTP_404_NOT_FOUND)
 	print(f'compRequest: {compRequest}')
 	compRequest.delete()
-	send_websocket_notification('component request deleted')
+	send_notification(message='component request deleted')
 	print('##################### end delete CompRequest ###########################')
 	return Response({'msg': 'deleted successfully'}, status=status.HTTP_200_OK)
 
@@ -585,9 +582,9 @@ def requestPart(request, pk=None, type=None):
 		print(f'length of requests: {_}')
 		print(f'len responseInstances: {len(responseInstances)}')
 		print(f'response: {response}')
-		print('start send_websocket_notification ##########')
-		send_websocket_notification(f'make part request-{region}')
-		print('end send_websocket_notification ##########')
+		print('start send_notification ##########')
+		send_notification(message=f'make part request-{region}')
+		print('end send_notification ##########')
 		return Response({'msg': f'{response} Received.', 'responseObjs': responseInstances}, status=status.HTTP_200_OK)
 	elif request.method == 'PATCH':
 		# note: only workshop would not require fault field
@@ -605,9 +602,9 @@ def requestPart(request, pk=None, type=None):
 			print(f'serializedPartRequest is valid')
 			serializedPartRequest.save()
 			print(f'serializedPartRequest saved #################')
-			print('start send_websocket_notification ##########')
-			send_websocket_notification(f'approve/reject part request-{region}')
-			print('end send_websocket_notification ##########')
+			print('start send_notification ##########')
+			send_notification(message=f'approve/reject part request-{region}')
+			print('end send_notification ##########')
 			return Response({'msg': 'Success'}, status=status.HTTP_200_OK)
 		print(f'serializedPartRequest.error: {serializedPartRequest.errors}')
 		return Response(serializedPartRequest.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -674,7 +671,7 @@ def deletePartRequest(request, pk=None):
 		return Response({'error': 'partRequest not found'}, status=status.HTTP_404_NOT_FOUND)
 	print(f'partRequest: {partRequest}')
 	partRequest.delete()
-	send_websocket_notification('part request deleted')
+	send_notification(message='part request deleted')
 	print('##################### end delete partRequest ###########################')
 	return Response({'msg': 'deleted successfully'}, status=status.HTTP_200_OK)
 
@@ -985,9 +982,9 @@ def requestStatus(request, pk=None):
 					partSerializer.save()
 					print(f'partSerializer for request {partRequestID} is saved successfully. ##################')
 				print(f'partSerializer error: {partSerializer.errors}')
-		print('start send_websocket_notification ##########')
-		send_websocket_notification(f'approve/reject components and/or parts request-{region}')
-		print('end send_websocket_notification ##########')
+		print('start send_notification ##########')
+		send_notification(message=f'approve/reject components and/or parts request-{region}')
+		print('end send_notification ##########')
 		return Response({'msg': 'success'}, status=status.HTTP_200_OK)
 	return Response({'wrong method used'}, status=status.HTTP_200_OK)
 
