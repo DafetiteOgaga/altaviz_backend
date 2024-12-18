@@ -19,8 +19,8 @@ from django.db.models import Q
 from django.utils.dateparse import parse_datetime
 from django.utils import timezone
 from datetime import datetime
-# from app_sse_notification.views import send_sse_notification
-from app_sse_notification.utils import send_websocket_notification
+from app_sse_notification.firebase_utils import send_notification
+# from app_sse_notification.utils import send_notification
 
 def compartmentalizedList(listValue: list):
 	newDict = {}
@@ -101,9 +101,9 @@ def fault(request, pk=None):
 				print(f'SAVED #########################')
 				if length != 0:
 					continue
-				print('start send_websocket_notification ##########')
-				send_websocket_notification(f'fault created-{region.name}')
-				print('end send_websocket_notification ##########')
+				print('start send_notification ##########')
+				send_notification(message=f'fault created-{region.name}')
+				print('end send_notification ##########')
 				return Response(serializer.data, status=status.HTTP_201_CREATED)
 			print(f'serializer.errors: {serializer.errors}')
 			return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -139,9 +139,9 @@ def custodianPendingFaults(request, pk=None, type=None):
 			# print(f'verified title: {resolvedFault.title}')
 			# print(f'verified other: {resolvedFault.other}')
 			# print(f'fault object: {resolvedFault}')
-			print('start send_websocket_notification ##########')
-			send_websocket_notification(f'verify resolve-{region}')
-			print('end send_websocket_notification ##########')
+			print('start send_notification ##########')
+			send_notification(message=f'verify resolve-{region}')
+			print('end send_notification ##########')
 			return Response(patchSerializer.data, status=status.HTTP_200_OK)
 		return Response(patchSerializer.errors, status=status.HTTP_400_BAD_REQUEST)
 	elif request.method == 'GET':
@@ -229,9 +229,9 @@ def custodianUnconfirmedResolutions(request, pk=None, type=None):
 			confirmResolution.save()
 			####################################
 			print(f'Confirmaion saved')
-			print('start send_websocket_notification ##########')
-			send_websocket_notification(f'confirm resolve-{faultLoggedBy.region.name}')
-			print('end send_websocket_notification ##########')
+			print('start send_notification ##########')
+			send_notification(message=f'confirm resolve-{faultLoggedBy.region.name}')
+			print('end send_notification ##########')
 			payloadKeys = ['resolvedBy', 'managedBy', 'supervisedBy']
 			usersToGetPoints = []
 			# allGood = []
@@ -262,9 +262,9 @@ def custodianUnconfirmedResolutions(request, pk=None, type=None):
 					# print(f'user dict: {user}')
 					user[index].save()
 					print()
-			print('start send_websocket_notification ##########')
-			send_websocket_notification(f'deliveries point-{faultLoggedBy.region.name}')
-			print('end send_websocket_notification ##########')
+			print('start send_notification ##########')
+			send_notification(message=f'deliveries point-{faultLoggedBy.region.name}')
+			print('end send_notification ##########')
 			return Response(confirmResolution.data, status=status.HTTP_200_OK)
 		# print(f'Error saving confirmation resolution: {confirmResolution.errors}')
 		print(f'Error saving confirmation resolution: {confirmResolution.errors}')
