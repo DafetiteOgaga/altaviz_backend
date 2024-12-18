@@ -15,8 +15,7 @@ from django.core.files import File
 from rest_framework.pagination import PageNumberPagination
 import os
 from django.conf import settings
-# from app_sse_notification.views import send_sse_notification
-from app_sse_notification.utils import send_websocket_notification
+from app_sse_notification.firebase_utils import send_notification
 
 def updateDetailesFxn(requestData, user):
 	############################ after admin approval ############################
@@ -44,9 +43,9 @@ def updateDetailesFxn(requestData, user):
 		newCustodian=custodian,
 		requestUser=user,
 	)
-	print('start send_websocket_notification ##########')
-	send_websocket_notification('account update request-hr')
-	print('end send_websocket_notification ##########')
+	print('start send_notification ##########')
+	send_notification(message='account update request-hr')
+	print('end send_notification ##########')
 	return 'completed: requestData fxn xoxoxoxoxoxo\n'
 	# return Response(serializedUser.data, status=status.HTTP_201_CREATED)
 
@@ -105,9 +104,9 @@ def getOrCreateBankLocationBranch(strObj: dict=None, user: object=None):
 			if triggerSupervisorNotification.is_valid():
 				triggerSupervisorNotification.save()
 				print('Notification sent successfully &&&&&&&&&&&')
-				print('start send_websocket_notification ##########')
-				send_websocket_notification(f'assigned engineer to new location-{region}')
-				print('end send_websocket_notification ##########')
+				print('start send_notification ##########')
+				send_notification(message=f'assigned engineer to new location-{region}')
+				print('end send_notification ##########')
 			else:
 				print(f'triggerSupervisorNotification error: {triggerSupervisorNotification.errors}')
 				print('notification unsuccessful &&&&&&&&&&&')
@@ -369,9 +368,6 @@ def userDetaileUpdate(request, pk=None):
 			print(f'changeBranch $$$$$: {changeBranch}')
 			# handle this change of branch location upon admin approval
 			updateDetailes = updateDetailesFxn(requestData=request.data, user=user)
-			# print('start send_websocket_notification ##########')
-			# send_websocket_notification('account update request-hr')
-			# print('end send_websocket_notification ##########')
 
 		# previous user location should be used instead
 		# of reassigning to the new location, pending when
@@ -392,9 +388,6 @@ def userDetaileUpdate(request, pk=None):
 		if not changeBranch and not changeLocation: text = 'Success'
 		resp = {'msg': text}
 		print(f'{resp}')
-		# print('start send_websocket_notification ##########')
-		# send_websocket_notification('account update request-hr')
-		# print('end send_websocket_notification ##########')
 		return Response(resp, status=status.HTTP_200_OK)
 
 	# write a patch request to hndle user replacing the current request
@@ -414,9 +407,9 @@ def userDetaileUpdate(request, pk=None):
 		###### continue here >>>>>>>>>>>>>>>>>>>>>
 		previousRequest.newBranch = request.data['branch']
 		previousRequest.save()
-		print('start send_websocket_notification ##########')
-		send_websocket_notification('account update request-hr')
-		print('end send_websocket_notification ##########')
+		print('start send_notification ##########')
+		send_notification(message='account update request-hr')
+		print('end send_notification ##########')
 		print('patch successful')
 		return Response({'msg': 'Request Update Successful'}, status=status.HTTP_200_OK)
 	return Response({'msg': 'error: wrong request method'}, status=status.HTTP_400_BAD_REQUEST)
@@ -588,9 +581,9 @@ def assignEngineerToLocation(request, pk=None, type=None):
 			print('#######################')
 			print()
 		print(f'region: {region}')
-		print('start send_websocket_notification ##########')
-		send_websocket_notification(f'assigned engineer to new location-{region}')
-		print('end send_websocket_notification ##########')
+		print('start send_notification ##########')
+		send_notification(message=f'assigned engineer to new location-{region}')
+		print('end send_notification ##########')
 		return Response({'msg': 'Success'}, status=status.HTTP_200_OK)
 	elif request.method == 'GET':
 		supervisor = User.objects.get(pk=pk)
