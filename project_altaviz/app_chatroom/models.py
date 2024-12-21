@@ -25,8 +25,8 @@ from PIL import Image
 
 # Create your models here.
 class Chat(models.Model):
-	user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='chats', null=True, blank=True)
-	contact = models.ForeignKey(User, on_delete=models.CASCADE, related_name='contacts', null=True, blank=True)
+	user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='chats', db_index=True, null=True, blank=True)
+	contact = models.ForeignKey(User, on_delete=models.CASCADE, related_name='contacts', db_index=True, null=True, blank=True)
 	# youAvatar = models.ImageField(upload_to='avatars', default='avatars/placeholder.png')
 	# contaAvatar = models.ImageField(upload_to='avatars', default='avatars/placeholder.png')
 	message = models.TextField(null=True, blank=True)
@@ -35,6 +35,10 @@ class Chat(models.Model):
 	timestamp = models.DateTimeField(auto_now_add=True)
 	class Meta:
 		ordering = ['timestamp']
+		indexes = [
+			models.Index(fields=['user', 'contact'], name='user_contact_idx'),
+			models.Index(fields=['contact', 'user'], name='contact_user_idx'),
+		]
 
 	# def save(self, *args, **kwargs):
 	# 	print('Saving chat message')
