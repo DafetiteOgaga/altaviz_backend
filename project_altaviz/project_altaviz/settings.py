@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'app_chatroom',		# <- added startapp here
     'app_sse_notification',		# <- added startapp here
     'app_deliveries',		# <- added startapp here
     'app_search',		# <- added startapp here

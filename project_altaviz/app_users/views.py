@@ -623,11 +623,12 @@ def totalAssignEngineerToLocation(request, pk=None):
 		return Response({'total': len(notifications)}, status=status.HTTP_200_OK)
 	return Response({'msg': 'No notifications'}, status=status.HTTP_200_OK)
 
-# @api_view(['GET'])
-# def getRegions(request, pk=None):
-#     print(f'pk: {pk}')
-#     regions = Region.objects.all()
-#     print(f'regions: {regions}')
-#     serializedRegions = RegionAloneSerializer(instance=regions, many=True).data
-#     print(f'serializedregions: {serializedRegions}')
-#     return Response(serializedRegions, status=status.HTTP_200_OK)
+@api_view(['GET'])
+def getAllUsers(request, pk=None):
+    print(f'pk: {pk}')
+    users = User.objects.all()
+    print(f'len users: {len(users)}')
+    print(f'ids: {[user.id for user in users]}')
+    serializedUsers = AllUsersSerializer(instance=users, many=True).data
+    print(f'len serializedUsers: {len(serializedUsers)}')
+    return Response(serializedUsers, status=status.HTTP_200_OK)

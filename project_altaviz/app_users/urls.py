@@ -22,6 +22,8 @@ urlpatterns = [
     path('new-location-assignment/<str:type>/<int:pk>/', view=views.assignEngineerToLocation, name='assignEngineerToLocation-type'),
     path('new-location-assignment/<int:pk>/total/', view=views.totalAssignEngineerToLocation, name='totalAssignEngineerToLocation'),
 
+    path('all-users/<int:pk>/', view=views.getAllUsers, name='getAllUsers'),
+
     # path('all-regions/<int:pk>/', view=views.getRegions, name='getRegions'),
 
 
