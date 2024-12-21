@@ -26,7 +26,7 @@ def chatUser(request, cpk=None, upk=None):
 	chats = Chat.objects.filter(
 		Q(user=user, contact=contact) | Q(user=contact, contact=user)
 	).order_by('-timestamp')  # Order chronologically (oldest to newest)
-	# print(f'chats: {chats}')
+	print(f'raw query: {chats.query}')
 	data = request.data.copy()
 	# if not backwardChatsExist:
 	# 	# Use the "forward" direction
