@@ -29,7 +29,9 @@ def chatUser(request, cpk=None, upk=None):
 
 
 	chats_forward = Chat.objects.filter(user=user, contact=contact)
+	print(f'chats_forward: {chats_forward}')
 	chats_backward = Chat.objects.filter(user=contact, contact=user)
+	print(f'chats_backward: {chats_backward}')
 	chats = (chats_forward | chats_backward).order_by('-timestamp')
 
 
