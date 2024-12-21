@@ -22,11 +22,23 @@ def chatUser(request, cpk=None, upk=None):
 	user = User.objects.get(pk=upk)
 	print(f'user: {user}')
 
-	# Fetch all messages between user A and user B, regardless of direction
-	chats = Chat.objects.filter(
-		Q(user=user, contact=contact) | Q(user=contact, contact=user)
-	).order_by('-timestamp')  # Order chronologically (oldest to newest)
-	print(f'raw query: {chats.query}')
+	# # Fetch all messages between user A and user B, regardless of direction
+	# chats = Chat.objects.filter(
+	# 	Q(user=user, contact=contact) | Q(user=contact, contact=user)
+	# ).order_by('-timestamp')  # Order chronologically (oldest to newest)
+
+
+	chats_forward = Chat.objects.filter(user=user, contact=contact)
+	chats_backward = Chat.objects.filter(user=contact, contact=user)
+	chats = (chats_forward | chats_backward).order_by('-timestamp')
+
+
+
+
+
+
+
+	# print(f'raw query: {chats.query}')
 	data = request.data.copy()
 	# if not backwardChatsExist:
 	# 	# Use the "forward" direction
