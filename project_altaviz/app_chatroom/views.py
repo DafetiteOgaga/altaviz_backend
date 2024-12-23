@@ -7,6 +7,7 @@ from app_users.models import User
 from .serializers import ChatsSerializer
 import json
 from django.db.models import Q
+from app_sse_notification.firebase_utils import send_chat_notification
 
 # Create your views here.
 @api_view(['GET', 'POST', 'PATCH', 'DELETE'])
@@ -26,42 +27,8 @@ def chatUser(request, cpk=None, upk=None):
 	chats = Chat.objects.filter(
 		Q(user=user, contact=contact) | Q(user=contact, contact=user)
 	).order_by('-timestamp')  # Order chronologically (oldest to newest)
-
 	print('all good 👍')
-
-
-	# chats_forward = Chat.objects.filter(user=user, contact=contact)
-	# print(f'chats_forward: {chats_forward}')
-	# chats_backward = Chat.objects.filter(user=contact, contact=user)
-	# print(f'chats_backward: {chats_backward}')
-	# chats = (chats_forward | chats_backward).order_by('-timestamp')
-
-
-
-
-
-
-
-	# print(f'raw query: {chats.query}')
 	data = request.data.copy()
-	# if not backwardChatsExist:
-	# 	# Use the "forward" direction
-	# 	if request.method == 'POST': data['youMessage'] = request.data['msg']
-	# 	chats = Chat.objects.filter(user=user, contact=contact).order_by('-timestamp')
-	# 	print(f'chats 01 > : {chats}')
-	# 	if chats: print(f'chats 01 > : {chats.first()}, youMsg: {chats.first().youMessage}, contactMsg: {chats.first().contactMessage}')
-	# 	# print(f'checking: youMessage: {chats[0].yourMessage} and contactMessage: {chats[0].contactMessage}')
-	# else:
-	# 	# Use the "backward" direction (user=contact, contact=user)
-	# 	if request.method == 'POST': data['contactMessage'] = request.data['msg']
-	# 	chats = Chat.objects.filter(user=contact, contact=user).order_by('-timestamp')
-	# 	print(f'chats 02 < : {chats}')
-	# 	if chats: print(f'chats 02 < : {chats.first()}, youMsg: {chats.first().youMessage}, contactMsg: {chats.first().contactMessage}')
-	# 	# print(f'checking: youMessage: {chats[0].yourMessage} and contactMessage: {chats[0].contactMessage}')
-
-	# chatsForward = Chat.objects.filter(user=user, contact=contact).order_by('-timestamp')
-	# chatsBackward = Chat.objects.filter(user=contact, contact=user).order_by('-timestamp')
-	# chats = chatsForward | chatsBackward
 	print(f'your chats with {contact.first_name}: {chats}')
 	if request.method == 'GET':
 		if not chats.exists():
@@ -75,6 +42,9 @@ def chatUser(request, cpk=None, upk=None):
 			startingChatsJson = json.dumps(startingChats)
 			print(f'startingChatsJson: {startingChatsJson}')
 			print('############### NEW done ###############')
+			# print(f'sending chat notification to firebase')
+			# send_chat_notification(user.id, contact.id, 'new message', 'sendername', 'receivername')
+			# print(f'notification sent to firebase')
 			return Response(startingChats, status=status.HTTP_200_OK)
 		serializedChats = ChatsSerializer(instance=chats, many=True).data
 		print('chats:')
@@ -95,6 +65,9 @@ def chatUser(request, cpk=None, upk=None):
 			print('chats:')
 			[print(f'''{msg.contact.first_name if msg.message.split('=')[0]==msg.contact.username else msg.user.first_name}: {msg.message.split("=")[1]}''') or None for msg in chats]
 			print('############### POST done ###############')
+			print(f'sending chat notification to firebase')
+			send_chat_notification(user.id, contact.id, data['message'], user.first_name, contact.first_name)
+			print(f'notification sent to firebase')
 			return Response(serializedChats, status=status.HTTP_201_CREATED)
 		return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
