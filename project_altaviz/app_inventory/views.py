@@ -349,11 +349,13 @@ def unapprovedPart(request, pk=None, type=None):
 
 @api_view(['DELETE'])
 def deleteUnapprovedPart(request, pk=None):
+	print(f'deleting ... ❌❌❌')
 	try:
 		item = UnconfirmedPart.objects.get(pk=pk)
 		print(f'deleting ... : {item}')
 		item.delete()
-		send_notification(message='fixed part deleted')
+		print(f'done ✅✅✅')
+		# send_notification(message='fixed part deleted')
 		return Response({'msg': 'Posted Part deleted successfully.'}, status=status.HTTP_204_NO_CONTENT)
 	except UnconfirmedPart.DoesNotExist:
 		return Response({'msg': 'Part does not exist.'}, status=status.HTTP_404_NOT_FOUND)
@@ -391,8 +393,8 @@ def requestComponent(request, pk=None, type=None):
 	if request.method == 'POST':
 		# note: only workshop would not require fault field
 		print('################# requestComponent ####################')
-		region = User.objects.get(email=request.data['user']).region.name
-		print(f'region:', region)
+		region = User.objects.get(email=request.data['user']).region
+		print(f'region:', region.name)
 		print(f'post payload: {request.data}')
 		# dicttn = {}
 		compRequestList = [
@@ -436,7 +438,7 @@ def requestComponent(request, pk=None, type=None):
 		print(f'len responseInstances: {len(responseInstances)}')
 		print(f'response: {response}')
 		print('start send_notification ##########')
-		send_notification(message=f'make component request-{region}')
+		send_notification(message=f'make component request-{region.name}')
 		print('end send_notification ##########')
 		return Response({'msg': f'{response} Received.', 'responseObjs': responseInstances}, status=status.HTTP_200_OK)
 	elif request.method == 'PATCH':
@@ -445,8 +447,8 @@ def requestComponent(request, pk=None, type=None):
 		print(f'patch payload: {request.data}')
 		componentRequest = RequestComponent.objects.get(pk=request.data['faultID'])
 		print(f'componentRequest: {componentRequest}')
-		region = componentRequest.user.region.name
-		print(f'region: {region}')
+		region = componentRequest.user.region
+		print(f'region: {region.name}')
 		serializedComponentRequest = RequestComponentCreateSerializer(
 			instance=componentRequest, data=request.data, partial=True
 		)
@@ -460,7 +462,7 @@ def requestComponent(request, pk=None, type=None):
 			print(f'status (after)=> approved: {updatedComponentRequest.approved}, rejected: {updatedComponentRequest.rejected}')
 			reaponse = 'approved' if updatedComponentRequest.approved else 'rejected'
 			print('start send_notification ##########')
-			send_notification(message=f'approve/reject component request-{region}')
+			send_notification(message=f'approve/reject component request-{region.name}')
 			print('end send_notification ##########')
 			return Response({'msg': reaponse}, status=status.HTTP_200_OK)
 			# return Response({'msg': 'Success'}, status=status.HTTP_200_OK)
@@ -471,7 +473,12 @@ def requestComponent(request, pk=None, type=None):
 			# get this pagiated data using getpagination custom hook
 			user = User.objects.get(pk=pk)
 			print(f'user obj: {user}')
-			userRequest = RequestComponent.objects.filter(
+			if user.role == 'workshop':
+				userRequest = RequestComponent.objects.filter(
+				user=user, approved=False, rejected=False,
+			)
+			else:
+				userRequest = RequestComponent.objects.filter(
 				user=user, approved=False, rejected=False,
 				fault__confirm_resolve=False
 			)
@@ -496,11 +503,15 @@ def requestComponent(request, pk=None, type=None):
 def totalPendingRequestComponent(request, pk=None):
 	print('##################### total compRequests ###########################')
 	user = User.objects.get(pk=pk)
-	compRequests = RequestComponent.objects.filter(
-		user=user,
-		approved=False,
-		rejected=False,
-	).count()
+	if user.role == 'workshop':
+			compRequests = RequestComponent.objects.filter(
+			user=user, approved=False, rejected=False,
+		).count()
+	else:
+		compRequests = RequestComponent.objects.filter(
+			user=user, approved=False, rejected=False,
+			fault__confirm_resolve=False
+		).count()
 	print(f'compRequests: {compRequests}')
 	print('##################### end total compRequests ###########################')
 	return Response({'total': compRequests}, status=status.HTTP_200_OK)
@@ -508,13 +519,17 @@ def totalPendingRequestComponent(request, pk=None):
 @api_view(['DELETE',])
 def deleteCompRequest(request, pk=None):
 	print('##################### delete CompRequest ###########################')
+	print(f'deleting ... ❌❌❌')
 	try:
 		compRequest = RequestComponent.objects.get(pk=pk)
 	except:
 		return Response({'error': 'compRequest not found'}, status=status.HTTP_404_NOT_FOUND)
 	print(f'compRequest: {compRequest}')
 	compRequest.delete()
-	send_notification(message='component request deleted')
+	print(f'done ✅✅✅')
+	print('start send_notification ##########')
+	send_notification(message=f'component request deleted-{compRequest.fault.logged_by.branch.region.name if compRequest.fault else compRequest.user.region.name}')
+	print('end send_notification ##########')
 	print('##################### end delete CompRequest ###########################')
 	return Response({'msg': 'deleted successfully'}, status=status.HTTP_200_OK)
 
@@ -540,8 +555,8 @@ def requestPart(request, pk=None, type=None):
 	if request.method == 'POST':
 		# note: only workshop would not require fault field
 		print('################# requestPart ####################')
-		region = User.objects.get(email=request.data['user']).region.name
-		print(f'region:', region)
+		region = User.objects.get(email=request.data['user']).region
+		print(f'region:', region.name)
 		print(f'post payload: {request.data}')
 		# dicttn = {}
 		partRequestList = [
@@ -583,7 +598,7 @@ def requestPart(request, pk=None, type=None):
 		print(f'len responseInstances: {len(responseInstances)}')
 		print(f'response: {response}')
 		print('start send_notification ##########')
-		send_notification(message=f'make part request-{region}')
+		send_notification(message=f'make part request-{region.name}')
 		print('end send_notification ##########')
 		return Response({'msg': f'{response} Received.', 'responseObjs': responseInstances}, status=status.HTTP_200_OK)
 	elif request.method == 'PATCH':
@@ -592,8 +607,8 @@ def requestPart(request, pk=None, type=None):
 		print(f'patch payload: {request.data}')
 		partRequest = RequestPart.objects.get(pk=request.data['faultID'])
 		print(f'partRequest: {partRequest}')
-		region = partRequest.user.region.name
-		print(f'region: {region}')
+		region = partRequest.user.region
+		print(f'region: {region.name}')
 		serializedPartRequest = RequestPartCreateSerializer(
 			instance=partRequest, data=request.data, partial=True
 		)
@@ -603,7 +618,7 @@ def requestPart(request, pk=None, type=None):
 			serializedPartRequest.save()
 			print(f'serializedPartRequest saved #################')
 			print('start send_notification ##########')
-			send_notification(message=f'approve/reject part request-{region}')
+			send_notification(message=f'approve/reject part request-{region.name}')
 			print('end send_notification ##########')
 			return Response({'msg': 'Success'}, status=status.HTTP_200_OK)
 		print(f'serializedPartRequest.error: {serializedPartRequest.errors}')
@@ -613,10 +628,23 @@ def requestPart(request, pk=None, type=None):
 			# get this pagiated data using getpagination custom hook
 			user = User.objects.get(pk=pk)
 			print(f'user obj: {user}')
-			partRequest = RequestPart.objects.filter(
+
+			if user.role == 'workshop':
+				partRequest = RequestPart.objects.filter(
+				user=user, approved=False, rejected=False,
+			)
+			else:
+				partRequest = RequestPart.objects.filter(
 				user=user, approved=False, rejected=False,
 				fault__confirm_resolve=False
 			)
+			print(f'user request: {partRequest}')
+
+
+			# partRequest = RequestPart.objects.filter(
+			# 	user=user, approved=False, rejected=False,
+			# 	fault__confirm_resolve=False
+			# )
 			partSerializer = RequestPartReadSerializer(instance=partRequest, many=True).data
 			for part in partSerializer:
 				part['type'] = 'part'
@@ -634,6 +662,28 @@ def requestPart(request, pk=None, type=None):
 			return partRequestPaginator.get_paginated_response(paginatedRequest)
 
 @api_view(['GET',])
+def totalPendingRequestPart(request, pk=None):
+	print('##################### total partRequests ###########################')
+	user = User.objects.get(pk=pk)
+	if user.role == 'workshop':
+			partRequests = RequestPart.objects.filter(
+			user=user, approved=False, rejected=False,
+		).count()
+	else:
+		partRequests = RequestPart.objects.filter(
+			user=user, approved=False, rejected=False,
+			fault__confirm_resolve=False
+		).count()
+	# partRequests = RequestPart.objects.filter(
+	# 	user=user,
+	# 	approved=False,
+	# 	rejected=False,
+	# ).count()
+	print(f'partRequests: {partRequests}')
+	print('##################### end total partRequests ###########################')
+	return Response({'total': partRequests}, status=status.HTTP_200_OK)
+
+@api_view(['GET',])
 def approvedRequestPart(request, pk=None):
 	if pk:
 		# get this pagiated data using getpagination custom hook
@@ -649,29 +699,20 @@ def approvedRequestPart(request, pk=None):
 		# print(f'usererializer: {usererializer.data}')
 		return approvedUserRequestPaginator.get_paginated_response(serialized_data)
 
-@api_view(['GET',])
-def totalPendingRequestPart(request, pk=None):
-	print('##################### total partRequests ###########################')
-	user = User.objects.get(pk=pk)
-	partRequests = RequestPart.objects.filter(
-		user=user,
-		approved=False,
-		rejected=False,
-	).count()
-	print(f'partRequests: {partRequests}')
-	print('##################### end total partRequests ###########################')
-	return Response({'total': partRequests}, status=status.HTTP_200_OK)
-
 @api_view(['DELETE',])
 def deletePartRequest(request, pk=None):
 	print('##################### delete partRequest ###########################')
+	print(f'deleting ... ❌❌❌')
 	try:
 		partRequest = RequestPart.objects.get(pk=pk)
 	except:
 		return Response({'error': 'partRequest not found'}, status=status.HTTP_404_NOT_FOUND)
 	print(f'partRequest: {partRequest}')
 	partRequest.delete()
-	send_notification(message='part request deleted')
+	print(f'done ✅✅✅')
+	print('start send_notification ##########')
+	send_notification(message=f'part request deleted-{partRequest.fault.logged_by.branch.region.name if partRequest.fault else partRequest.user.region.name}')
+	print('end send_notification ##########')
 	print('##################### end delete partRequest ###########################')
 	return Response({'msg': 'deleted successfully'}, status=status.HTTP_200_OK)
 
@@ -972,7 +1013,7 @@ def requestStatus(request, pk=None):
 		if 'requestPartIDs' in requestList:
 			for partRequestID in request.data['requestPartIDs'].split(','):
 				partRequestInstance = RequestPart.objects.get(pk=partRequestID)
-				region = compRequestInstance.fault.logged_by.branch.region.name
+				region = compRequestInstance.fault.logged_by.branch.region
 				if partRequestInstance.approved or partRequestInstance.rejected:
 					print(f'Request part {partRequestID} has already been responded to. Skipping...')
 					continue
@@ -983,7 +1024,7 @@ def requestStatus(request, pk=None):
 					print(f'partSerializer for request {partRequestID} is saved successfully. ##################')
 				print(f'partSerializer error: {partSerializer.errors}')
 		print('start send_notification ##########')
-		send_notification(message=f'approve/reject components and/or parts request-{region}')
+		send_notification(message=f'approve/reject components and/or parts request-{region.name}')
 		print('end send_notification ##########')
 		return Response({'msg': 'success'}, status=status.HTTP_200_OK)
 	return Response({'wrong method used'}, status=status.HTTP_200_OK)
@@ -1218,6 +1259,7 @@ def allUserRequests(request, pk=None, type=None):
 		confirm_resolve=False,
 	).distinct().prefetch_related('partfault', 'componentfault')
 
+	print(f'unresolved_faults_queryset: {unresolved_faults_queryset}')
 	# Now use this queryset in main query
 	engineers = User.objects.filter(
 		Q(role='engineer') | Q(role='supervisor'),
@@ -1233,6 +1275,8 @@ def allUserRequests(request, pk=None, type=None):
 			to_attr='unresolved_faults'
 		)
 	).distinct()
+
+	print(f'engineers: {engineers}')
 
 	# allFaultsData = []  # Store all faults for all engineers
 	allEngineersData = []  # Store all faults for all engineers
