@@ -126,8 +126,8 @@ def custodianPendingFaults(request, pk=None, type=None):
 		print(f'verified title: {fault.title}')
 		print(f'verified other: {fault.other}')
 		print(f'fault object: {fault}')
-		region = fault.logged_by.branch.region.name
-		print(f'region: {region}')
+		region = fault.logged_by.branch.region
+		print(f'region: {region.name}')
 		patchSerializer = FaultPatchSerializer(instance=fault, data=request.data, partial=True)
 		print(f'is patchSerializer valid: {patchSerializer.is_valid()}')
 		if patchSerializer.is_valid():
@@ -140,7 +140,7 @@ def custodianPendingFaults(request, pk=None, type=None):
 			# print(f'verified other: {resolvedFault.other}')
 			# print(f'fault object: {resolvedFault}')
 			print('start send_notification ##########')
-			send_notification(message=f'verify resolve-{region}')
+			send_notification(message=f'verify resolve-{region.name}')
 			print('end send_notification ##########')
 			return Response(patchSerializer.data, status=status.HTTP_200_OK)
 		return Response(patchSerializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -294,8 +294,6 @@ def custodianUnconfirmedResolutions(request, pk=None, type=None):
 			if any([partRequestExist, componentRequestExist]):
 				faultCompRequest = faultRequests.componentfault.all()
 				faultPartRequest = faultRequests.partfault.all()
-				# print(f'	faultCompRequest: {[request.id for request in faultCompRequest]}')
-				# print(f'	faultPartRequest: {[part.id for part in faultPartRequest]}')
 				faultCompRequestSerializer = RequestFaultComponentReadSerializer(instance=faultCompRequest, many=True)
 				faultPartRequestSerializer = RequestFaultPartReadSerializer(instance=faultPartRequest, many=True)
 				item['requestComponent'] = faultCompRequestSerializer.data if faultCompRequestSerializer.data else False
@@ -331,12 +329,18 @@ def totalCustodianUnconfirmedResolutions(request, pk=None):
 @api_view(['DELETE',])
 def deleteFault(request, pk=None):
 	print('##################### delete faults ###########################')
+	print(f'deleting ... ❌❌❌')
 	try:
 		fault = Fault.objects.get(pk=pk)
 	except:
 		return Response({'error': 'fault not found'}, status=status.HTTP_404_NOT_FOUND)
 	print(f'fault: {fault}')
 	fault.delete()
+	print(f'done ✅✅✅')
+	print('start send_notification ##########')
+	# print(f'fault deleted-{fault.logged_by.branch.region.name}')
+	send_notification(message=f'fault deleted-{fault.logged_by.branch.region.name}')
+	print('end send_notification ##########')
 	print('##################### end delete faults ###########################')
 	return Response({'msg': 'deleted successfully'}, status=status.HTTP_200_OK)
 
@@ -423,8 +427,6 @@ def engineerUnconfirmedFaults(request, pk=None, type=None):
 		if any([partRequestExist, componentRequestExist]):
 			faultCompRequest = faultRequests.componentfault.all()
 			faultPartRequest = faultRequests.partfault.all()
-			# print(f'	faultCompRequest: {[request.id for request in faultCompRequest]}')
-			# print(f'	faultPartRequest: {[part.id for part in faultPartRequest]}')
 			faultCompRequestSerializer = RequestFaultComponentReadSerializer(instance=faultCompRequest, many=True)
 			faultPartRequestSerializer = RequestFaultPartReadSerializer(instance=faultPartRequest, many=True)
 			item['requestComponent'] = faultCompRequestSerializer.data if faultCompRequestSerializer.data else False
@@ -592,8 +594,6 @@ def custodianUnresolvedFaults(request, pk=None, type=None):
 		if any([partRequestExist, componentRequestExist]):
 			faultCompRequest = faultRequests.componentfault.all()
 			faultPartRequest = faultRequests.partfault.all()
-			# print(f'	faultCompRequest: {[request.id for request in faultCompRequest]}')
-			# print(f'	faultPartRequest: {[part.id for part in faultPartRequest]}')
 			faultCompRequestSerializer = RequestFaultComponentReadSerializer(instance=faultCompRequest, many=True).data
 			for component in faultCompRequestSerializer:
 				component['type'] = 'component'

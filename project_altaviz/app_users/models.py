@@ -19,6 +19,8 @@ class EngineerAssignmentNotificaion(models.Model):
 	status = models.BooleanField(default=True)
 	class Meta:
 		ordering = ['id']
+	def __str__(self) -> str:
+		return f'eng assignment obj: {self.location}'
 
 class Engineer(models.Model):
 	engineer = models.ForeignKey('User', on_delete=models.PROTECT, null=True, blank=True)

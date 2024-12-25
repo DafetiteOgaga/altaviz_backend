@@ -32,28 +32,29 @@ def send_notification(message):
 	print('Sending notification to Firebase Realtime Database')
 	# print(f'user_id: {user_id}')
 	print(f'message: {message}')
-	notification_data = {
-		"message": message,
-		"timestamp": datetime.now().isoformat()
-	}
-	# Define the path in Firebase
-	ref = db.reference(f"notifications", app=notification_db)
-	print(f'the referenced location: {ref}')
-	data = ref.get()
-	print("Data at the reference:", data)  # Prints the data stored at the reference
-	dataKey = next(iter(data.keys()), None) if data else None # gets the first key from the reference dict
+	if 'deliveries point' not in message:
+		notification_data = {
+			"message": message,
+			"timestamp": datetime.now().isoformat()
+		}
+		# Define the path in Firebase
+		ref = db.reference(f"notifications", app=notification_db)
+		print(f'the referenced location: {ref}')
+		data = ref.get()
+		print("Data at the reference:", data)  # Prints the data stored at the reference
+		dataKey = next(iter(data.keys()), None) if data else None # gets the first key from the reference dict
 
-	# Push and replace the notification in Firebase
-	try:
-		# Delete old data for the user
-		ref.delete()
-		print(f"Old notifications for {dataKey} have been deleted.")
+		# Push and replace the notification in Firebase
+		try:
+			# Delete old data for the user
+			ref.delete()
+			print(f"Old notifications for {dataKey} have been deleted.")
 
-		# Push the new notification to Firebase
-		ref.push(notification_data)
-		print(f"New notification sent to users.")
-	except Exception as e:
-		print(f"Error while sending notification to users: {e}")
+			# Push the new notification to Firebase
+			ref.push(notification_data)
+			print(f"New notification sent to users.")
+		except Exception as e:
+			print(f"Error while sending notification to users: {e}")
 
 
 def send_chat_notification(senderID, receiverID, message, senderName, receiverName):
@@ -72,13 +73,16 @@ def send_chat_notification(senderID, receiverID, message, senderName, receiverNa
 	if data:
 		dataKey = next(iter(data.keys()), None) if data else None # gets the first key from the reference dict
 		print(f'dataKey: {dataKey}')
-		listKeys = str(senderID) in data[dataKey]['sendersList'].keys()
-		print(f'senderID: {senderID}')
-		print(f'previous sender: {listKeys}')
-		if listKeys:
-			# counter = data[dataKey]['sendersList'][senderID]['notificationCount']
-			counter = data[dataKey]['sendersList'][f'{senderID}']['notificationCount']
-		senders = data[dataKey]['sendersList']
+		dataKeyListKeys = [key for key in data[dataKey].keys()] if data else None
+		print(f'dataKeyListKeys: {dataKeyListKeys}')
+		if 'sendersList' in dataKeyListKeys:
+			listKeys = str(senderID) in data[dataKey]['sendersList'].keys()
+			print(f'senderID: {senderID}')
+			print(f'previous sender: {listKeys}')
+			if listKeys:
+				# counter = data[dataKey]['sendersList'][senderID]['notificationCount']
+				counter = data[dataKey]['sendersList'][f'{senderID}']['notificationCount']
+			senders = data[dataKey]['sendersList']
 	print(f'counter: {counter+1}')
 	print(f'senders: {senders}')
 	notification_data = {

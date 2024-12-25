@@ -18,7 +18,7 @@ class Branch(models.Model):
 	class Meta:
 		ordering = ['id']
 	def __str__(self) -> str:
-		return f'{self.name}.branchObj for {self.bank.name} in {self.state.name}: {self.id}'
+		return f'{self.name}.branchObj for {self.bank.name} in {self.location.location} ({self.state.name}): {self.id}'
 
 class Custodian(models.Model):
 	# custodian = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='custodiandata', null=True, blank=True)

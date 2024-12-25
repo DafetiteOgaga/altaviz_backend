@@ -59,7 +59,7 @@ def getOrCreateBankLocationBranch(strObj: dict=None, user: object=None):
 	state = State.objects.get(name=strObj['stateStr'])
 	print(f'state: {state}')
 	region = state.region
-	print(f"region (state's): {region}")
+	print(f"region (state's): {region.name}")
 
 	supervisorStr = strObj['fERole'] == "supervisor"
 	helpdeskStr = strObj['fERole'] == "help-desk"
@@ -105,7 +105,7 @@ def getOrCreateBankLocationBranch(strObj: dict=None, user: object=None):
 				triggerSupervisorNotification.save()
 				print('Notification sent successfully &&&&&&&&&&&')
 				print('start send_notification ##########')
-				send_notification(message=f'assigned engineer to new location-{region}')
+				send_notification(message=f'assigned engineer to new location-{region.name}')
 				print('end send_notification ##########')
 			else:
 				print(f'triggerSupervisorNotification error: {triggerSupervisorNotification.errors}')
@@ -559,10 +559,11 @@ def assignEngineerToLocation(request, pk=None, type=None):
 			branch = Branch.objects.filter(location=newLocation)
 			print(f'check branch: {branch}')
 			print(f'check engineer: {Engineer.objects.filter(location=newLocation)}')
-			assignedEngineer = Engineer.objects.get_or_create(
+			assignedEngineer, newEngineerObj = Engineer.objects.get_or_create(
 				engineer=engineer,
                 location=newLocation,
 			)
+			print(f'newEngineerObj: {newEngineerObj}')
 			print(f'assignedEngineer obj: {assignedEngineer}')
 			if branch:
 				branch = branch[0]
@@ -582,7 +583,7 @@ def assignEngineerToLocation(request, pk=None, type=None):
 			print()
 		print(f'region: {region}')
 		print('start send_notification ##########')
-		send_notification(message=f'assigned engineer to new location-{region}')
+		send_notification(message=f'assigned engineer to new location-{region.name}')
 		print('end send_notification ##########')
 		return Response({'msg': 'Success'}, status=status.HTTP_200_OK)
 	elif request.method == 'GET':
