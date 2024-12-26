@@ -74,3 +74,9 @@ def banksView(request):
 
     return Response(serializedRegions, status=status.HTTP_200_OK)
     # return Response({'good'}, status=status.HTTP_200_OK)
+
+@api_view(['GET'])
+def banksBranchView(request):
+    banks = Bank.objects.all()
+    serializedBanks = BankBranchSerializer(instance=banks, many=True).data
+    return Response(serializedBanks, status=status.HTTP_200_OK)

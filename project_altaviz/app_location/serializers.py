@@ -38,3 +38,14 @@ class LocationWithStateAndBankSerializer(serializers.ModelSerializer):
 	class Meta:
 		model = Location
 		fields = [ 'id', 'location', 'state']
+
+class LocationBranches(serializers.ModelSerializer):
+	branches = serializers.SerializerMethodField()
+	class Meta:
+		model = Location
+		fields = [ 'id', 'location', 'branches']
+
+	def get_branches(self, instance):
+		from app_custodian.serializers import BranchListSerializer
+		branches = instance.locationbranches.all()
+		return BranchListSerializer(branches, many=True).data
