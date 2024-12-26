@@ -11,9 +11,9 @@ class Branch(models.Model):
 	custodian = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='branchcustodian', null=True, blank=True)
 	# custodian = models.ForeignKey('Custodian', on_delete=models.PROTECT, related_name='branchcustodian', null=True, blank=True)
 	branch_engineer = models.ForeignKey(Engineer, on_delete=models.DO_NOTHING, related_name='branchengineer', null=True, blank=True)
-	bank = models.ForeignKey(Bank, on_delete=models.PROTECT, related_name='bankbranches')  # A bank can have multiple branches
+	bank = models.ForeignKey(Bank, on_delete=models.PROTECT, related_name='bankbranches', null=True, blank=True)  # A bank can have multiple branches
 	state = models.ForeignKey(State, on_delete=models.PROTECT, related_name='statebranches', null=True, blank=True)  # A state can have multiple branches
-	location = models.ForeignKey(Location, on_delete=models.PROTECT, related_name='locationbranches')  # A location can have multiple branches
+	location = models.ForeignKey(Location, on_delete=models.PROTECT, related_name='locationbranches', null=True, blank=True)  # A location can have multiple branches
 	region = models.ForeignKey(Region, on_delete=models.PROTECT, related_name='branchregion', null=True, blank=True)
 	class Meta:
 		ordering = ['id']
