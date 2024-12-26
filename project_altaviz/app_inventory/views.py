@@ -75,7 +75,7 @@ def componentName(request, pk=None):
 				print(f'component inventory posted by: {componentInventory.user}')
 				componentInventory.save()
 				print('component inventory updated.')
-				send_notification(message='added component name to inventory')
+				# send_notification(message='added component name to inventory')
 				return Response(serializer.data, status=status.HTTP_201_CREATED)
 			print(f'serializer.errors: {serializer.errors}')
 			return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -117,7 +117,7 @@ def components(request, pk=None):
 					print(f'saved: {dicttn}')
 				if length != 0:
 					continue
-				send_notification(message='updated component in inventory')
+				# send_notification(message='updated component in inventory')
 				return Response({'success': 'Success: Inventory has been updated.'}, status=status.HTTP_201_CREATED)
 			print(f'serializer.errors: {serializer.errors}')
 			return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -185,7 +185,7 @@ def partName(request, pk=None):
 				print(f'part inventory posted by: {partInventory.user}')
 				partInventory.save()
 				print('part inventory updated.')
-				send_notification(message='added part name to inventory')
+				# send_notification(message='added part name to inventory')
 				return Response(serializer.data, status=status.HTTP_201_CREATED)
 			print(f'serializer.errors: {serializer.errors}')
 			return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -227,7 +227,7 @@ def parts(request, pk=None):
 					print(f'saved: {dicttn}')
 				if length != 0:
 					continue
-				send_notification(message='updated part in inventory')
+				# send_notification(message='updated part in inventory')
 				return Response({'success': 'Success: Inventory has been updated.'}, status=status.HTTP_201_CREATED)
 			print(f'serializer.errors: {serializer.errors}')
 			return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
