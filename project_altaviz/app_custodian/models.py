@@ -8,7 +8,7 @@ from app_users.models import Engineer, Region, User
 # Create your models here.
 class Branch(models.Model):
 	name = models.CharField(max_length=100)
-	custodian = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='branchcustodian', null=True, blank=True)
+	# custodian = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='branchcustodian', null=True, blank=True) # remove this field
 	# custodian = models.ForeignKey('Custodian', on_delete=models.PROTECT, related_name='branchcustodian', null=True, blank=True)
 	branch_engineer = models.ForeignKey(Engineer, on_delete=models.DO_NOTHING, related_name='branchengineer', null=True, blank=True)
 	bank = models.ForeignKey(Bank, on_delete=models.PROTECT, related_name='bankbranches', null=True, blank=True)  # A bank can have multiple branches
@@ -18,7 +18,7 @@ class Branch(models.Model):
 	class Meta:
 		ordering = ['id']
 	def __str__(self) -> str:
-		return f'{self.name}.branchObj for {self.bank.name} in {self.location.location} ({self.state.name}): {self.id}'
+		return f'{self.name}.branchObj for {self.bank.name if self.bank else "no bank yet"} in {self.location.location if self.location else "no location yet"} ({self.state.name if self.state else "no state yet"}): {self.id}'
 
 class Custodian(models.Model):
 	# custodian = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='custodiandata', null=True, blank=True)

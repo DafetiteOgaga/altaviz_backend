@@ -89,8 +89,8 @@ class UserReadSerializer(serializers.ModelSerializer):
 		# 	return BranchSerializer(randomBranch).data
 
 class UserCreateSerializer(serializers.ModelSerializer):
-	location = serializers.SlugRelatedField(
-		queryset=Location.objects.all(), slug_field='location'
+	location = serializers.PrimaryKeyRelatedField(
+		queryset=Location.objects.all()
 	)
 	state = serializers.SlugRelatedField(
 		queryset=State.objects.all(), slug_field='name'
