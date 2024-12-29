@@ -16,20 +16,20 @@ User = get_user_model()
 # 		fields = '__all__'
 
 class CustodianSerializer(serializers.ModelSerializer):
-	# custodian = serializers.SerializerMethodField()
+	custodian = serializers.SerializerMethodField()
 	# custodian = serializers.EmailField(source='custodian.email', read_only=True)
 	branch = serializers.SerializerMethodField()
 	class Meta:
 		model = Custodian
-		fields = ['id', 'branch']
+		fields = ['id', 'custodian', 'branch']
 		# fields = '__all__'
-	# def get_custodian(self, instance):
-	# 	# Lazy import inside the method
-	# 	print(f'instance.custodian ##########: {instance}')
-	# 	print(f'instance.custodian ##########: {instance.custodian}')
-	# 	# print(f'instance.custodian##########: {instance.email}')
-	# 	from app_users.serializers import UserSummarizedDetailsSerializer
-	# 	return UserSummarizedDetailsSerializer(instance.custodian).data
+	def get_custodian(self, instance):
+		# Lazy import inside the method
+		print(f'instance.custodian ##########: {instance}')
+		print(f'instance.custodian ##########: {instance.custodian}')
+		# print(f'instance.custodian##########: {instance.email}')
+		from app_users.serializers import UserSummarizedDetailsSerializer
+		return UserSummarizedDetailsSerializer(instance.custodian).data
 	def get_branch(self, instance):
 		# Lazy import inside the method
 		# print(f'instance (branch) ##########: {instance}')
