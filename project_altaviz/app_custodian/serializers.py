@@ -52,7 +52,7 @@ class BranchSerializer(serializers.ModelSerializer):
 	bank = BankSerializer(read_only=True)
 	location = LocationSerializer(read_only=True)
 	branch_engineer = serializers.SerializerMethodField()
-	custodian = serializers.SerializerMethodField()
+	# custodian = serializers.SerializerMethodField()
 	state = StateNoRegionSerializer(read_only=True)
 	region = serializers.SerializerMethodField(read_only=True)
 	class Meta:
@@ -64,12 +64,12 @@ class BranchSerializer(serializers.ModelSerializer):
 		# print(f'eng instance.engineer (branch) ##########: {instance.branch_engineer}')
 		from app_users.serializers import EngineerSerializer
 		return EngineerSerializer(instance.branch_engineer).data
-	def get_custodian(self, instance):
-		# Lazy import inside the method
-		# print(f'instance (branch) ##########: {instance}')
-		# print(f'instance.custodian (branch) ##########: {instance.custodian}')
-		from app_users.serializers import UserSummarizedDetailsSerializer
-		return UserSummarizedDetailsSerializer(instance.custodian).data
+	# def get_custodian(self, instance):
+	# 	# Lazy import inside the method
+	# 	# print(f'instance (branch) ##########: {instance}')
+	# 	# print(f'instance.custodian (branch) ##########: {instance.custodian}')
+	# 	from app_users.serializers import UserSummarizedDetailsSerializer
+	# 	return UserSummarizedDetailsSerializer(instance.custodian).data
 	def get_region(self, instance):
 		# Lazy import inside the method
 		# print(f'region instance (branch) ##########: {instance}')
