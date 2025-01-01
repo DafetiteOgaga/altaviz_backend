@@ -121,9 +121,7 @@ def getOrCreateBankLocationBranch(strObj: dict=None, locationID: int=None,  user
 		print(f'location (before): {location}')
 		if strObj['bankStr']: location.bank.add(bank)
 		print(f'location (after adding bank): {location}')
-		checkLocationEngineer = EngineerAssignmentNotificaion.objects.filter(
-				location=location,
-			)
+		checkLocationEngineer = EngineerAssignmentNotificaion.objects.filter(location=location)
 		print(f'checkLocationEngineer: {checkLocationEngineer}')
 		if not checkLocationEngineer:
 			supervisor = User.objects.filter(region=region, role='supervisor').first()
@@ -262,14 +260,14 @@ def users(request, pk=None):
 			user = serializedUser.save()
 			print('user saved successfully')
 			if role != 'custodian':
-				Deliveries.objects.create(user=user)
+				Deliveries.objects.get_or_create(user=user)
 				print(f'user: {user}')
 				print(f'user id: {user.id}')
 				print(f'user role: {user.role}')
 				# user = User.objects.get(email=data['email'])
 				if role == 'engineer':
 					print(f'creating engineer object')
-					engineer = Engineer.objects.create(engineer=user, location=location)
+					engineer, newEng = Engineer.objects.get_or_create(engineer=user, location=location)
 					print(f'created: {engineer}')
 				elif role == 'supervisor' or role == 'help-desk':
 					print(f'appending {user.role} to region object')
@@ -361,7 +359,8 @@ def userDetaileUpdate(request, pk=None):
 			if request.data["newBranch"] == valNew or request.data["newLocation"] == valNew:
 				userLocation = valNew
 			else:
-				userLocation = user.branchcustodian.filter(location__location=requestLocation).first().location.location
+				# userLocation = user.branchcustodian.filter(location__location=requestLocation).first().location.location
+				userLocation = user.custodiandata.first().branch.location.location
 		else:
 			userLocation = user.location.location if request.data["newLocation"] != valNew else valNew
 		print(f'userLocation: {userLocation}')
