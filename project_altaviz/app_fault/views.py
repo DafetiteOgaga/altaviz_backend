@@ -21,6 +21,8 @@ from django.utils import timezone
 from datetime import datetime
 from app_sse_notification.firebase_utils import send_notification
 # from app_sse_notification.utils import send_notification
+from asgiref.sync import sync_to_async, async_to_sync
+from django.http import JsonResponse
 
 def compartmentalizedList(listValue: list):
 	newDict = {}
@@ -34,144 +36,164 @@ def compartmentalizedList(listValue: list):
 # Create your views here.
 @api_view(['GET',])
 def faultName(request, pk=None):
-	faultNames = FaultName.objects.all()
-	print(f'faultNames: {faultNames}')
-	serializer = FaultNameSerializer(faultNames, many=True)
-	print(f'faultNames serialized: {serializer.data}')
-	return Response(serializer.data, status=status.HTTP_200_OK)
+	async def getData():
+		faultNames = await sync_to_async(FaultName.objects.all)()
+		# print(f'faultNames: {faultNames}')
+		serializer = await sync_to_async(lambda: FaultNameSerializer(faultNames, many=True).data)()
+		print(f'faultNames serialized: {serializer}')
+		return serializer
+	serializer = async_to_sync(getData)()
+	return Response(serializer, status=status.HTTP_200_OK)
 
 @api_view(['GET',])
 def faultDetail(request, pk=None):
-	faultObj = Fault.objects.get(pk=pk)
-	print(f'faultObj: {faultObj}')
-	serializer = FaultCreateUpdateSerializer(instance=faultObj)
-	print(f'faultObj serialized: {serializer.data}')
-	return Response(serializer.data, status=status.HTTP_200_OK)
+	async def getData():
+		faultObj = await sync_to_async(Fault.objects.get)(pk=pk)
+		# print(f'faultObj: {faultObj}')
+		serializer = await sync_to_async(lambda: FaultCreateUpdateSerializer(instance=faultObj).data)()
+		print(f'faultObj serialized: {serializer}')
+		return serializer
+	serializer = async_to_sync(getData)()
+	return Response(serializer, status=status.HTTP_200_OK)
 
 @api_view(['POST'])
 def fault(request, pk=None):
-	# faultDetails = Fault.objects.all()
 	if request.method == 'POST':
-		region = Region.objects.get(name=request.data['region'])
 		print('fault payload:', request.data)
-		location = Location.objects.get(
-			location=request.data['location'],
-			bank=Bank.objects.get(name=request.data['bank']),
-			state=State.objects.get(name=request.data['state']),
-			region=region,
-		)
-		assigned_to = request.data['assigned_to']
-		supervised_by = request.data['supervised_by']
-		managed_by = request.data['managed_by']
-		logged_by = request.data['logged_by']
-		# print(f'email: {email}')
-		print(f'location id: {location.id}')
-		print(f'assigned_to: {assigned_to}')
-		print(f'supervised_by: {supervised_by}')
-		print(f'managed_by: {managed_by}')
-		print(f'logged_by: {logged_by}')
-		dictionary = {item: request.data[item] for item in list(request.data)}
-		print(f'dictionary: {dictionary}')
-		dicttn = {}
-		faultList = [i for i in (list(request.data)) if i.startswith('fault') or i.startswith('other')]
-		dictOfLists = compartmentalizedList(faultList)
-		length = len(dictOfLists)
-		print('dictOfLists:', dictOfLists)
-		print('list version:', faultList)
-		print('length:', length)
-		for item in dictOfLists.values():
-			print(f'item:', item)
-			# dicttn['title'] = FaultName.objects.get(name=request.data[item[0]])
-			dicttn['title'] = request.data[item[0]]
-			if len(item) > 1:
-				dicttn['other'] = request.data[item[1]]
-			else:
-				dicttn['other'] = None
-			dicttn.update({item: request.data[item] for item in list(request.data)})
-			dicttn['location'] = location.id
-			print(f'new dicttn:', dicttn)
-			# return Response({'allgood'})
-			serializer = FaultCreateUpdateSerializer(data=dicttn)
-			print(f'is serializer valid:', serializer.is_valid())
-			if serializer.is_valid():
-				length -= 1
-				# if length % 2	== 0:
-				serializer.save()
-				print(f'saved: {dicttn}')
-				print(f'SAVED #########################')
-				if length != 0:
-					continue
+		async def postData():
+			try:
+				# Get region and location objects asynchronously
+				region = await sync_to_async(Region.objects.get)(name=request.data['region'])
+				locationName, locationID = request.data['location'].split('-')
+				print(f'locationName: {locationName}')
+				print(f'locationID: {locationID}')
+				location = await sync_to_async(Location.objects.get)(id=int(locationID))
+				# location = await sync_to_async(Location.objects.get)(id=locationID)
+				print(f'location: {location.id}')
+			except (KeyError, Region.DoesNotExist, Location.DoesNotExist) as e:
+				print(f'error for region and location: {e}')
+				return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+			dictionary = {item: request.data[item] for item in request.data}
+			print(f'dictionary: {dictionary}')
+			faultList = [i for i in request.data if i.startswith('fault') or i.startswith('other')]
+			print(f'faultList: {faultList}')
+			dictOfLists = compartmentalizedList(faultList)
+			print(f'dictOfLists: {dictOfLists}')
+			length = len(dictOfLists)
+
+			# Validation for empty fault list
+			if not faultList:
+				return Response({'error': 'No faults provided'}, status=status.HTTP_400_BAD_REQUEST)
+
+			try:
+				print('try block')
+				dicttn = {}
+				# Process each fault asynchronously
+				for item in dictOfLists.values():
+					print(f'item:', item)
+					dicttn['title'] = request.data[item[0]]
+					if len(item) > 1:
+						dicttn['other'] = request.data[item[1]]
+					else:
+						dicttn['other'] = None
+					dicttn.update({item: request.data[item] for item in list(request.data)})
+					dicttn['location'] = location.id
+					print(f'new dicttn:', dicttn)
+
+					# Wrap serializer operations in sync_to_async
+					print('before serializer')
+					serializer = await sync_to_async(lambda: FaultCreateUpdateSerializer(data=dicttn))()
+					print('after serializer')
+					if await sync_to_async(serializer.is_valid)():
+						print('before serializer save')
+						length -= 1
+						await sync_to_async(serializer.save)()
+						print(f'saved: {dicttn}')
+						print(f'SAVED #########################')
+						if length != 0:
+							continue
+					else:
+						print(f'fault serializer errors: {serializer.errors}')
+						print(f'fault serializer error message: {serializer.error_messages}')
+						return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+				# Send notification outside the loop
 				print('start send_notification ##########')
-				send_notification(message=f'fault created-{region.name}')
+				await sync_to_async(send_notification)(message=f'fault created-{region.name}')
 				print('end send_notification ##########')
-				return Response(serializer.data, status=status.HTTP_201_CREATED)
-			print(f'serializer.errors: {serializer.errors}')
-			return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+				return Response({'message': 'All faults created successfully'}, status=status.HTTP_201_CREATED)
+
+			except Exception as e:
+				print(f'error for fault: {e}')
+				return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+		return async_to_sync(postData)()
+
+	return Response({'error': 'Method not allowed'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
 
 @api_view(['GET', 'PATCH'])
 def custodianPendingFaults(request, pk=None, type=None):
 	print('##################### custodianPendingFaults ###########################')
 	print(f'pk: {pk}')
 	if request.method == 'PATCH':
-		# engineer uses this to verify faults
 		print('patch payload:', request.data)
-		# patchData = request.data.copy()
-		# patchData['verify_resolve'] = request.data['verify_resolve'] == 'true' if request.data['verify_resolve'] else None
-		# print('patchData:', patchData)
 		print('request fault id:', request.data['faultID'])
-		# print('request fault id type:', type(request.data['faultID']))
-		fault = Fault.objects.get(pk=request.data['faultID'])
-		print(f'verified: {fault.verify_resolve}')
-		print(f'verified id: {fault.id}')
-		print(f'verified title: {fault.title}')
-		print(f'verified other: {fault.other}')
-		print(f'fault object: {fault}')
-		region = fault.logged_by.branch.region
-		print(f'region: {region.name}')
-		patchSerializer = FaultPatchSerializer(instance=fault, data=request.data, partial=True)
-		print(f'is patchSerializer valid: {patchSerializer.is_valid()}')
-		if patchSerializer.is_valid():
-			patchSerializer.save()
-			print('patch successful ##########')
-			# resolvedFault = Fault.objects.get(pk=request.data['faultID'])
-			# print(f'verified: {resolvedFault.verify_resolve}')
-			# print(f'verified id: {resolvedFault.id}')
-			# print(f'verified title: {resolvedFault.title}')
-			# print(f'verified other: {resolvedFault.other}')
-			# print(f'fault object: {resolvedFault}')
-			print('start send_notification ##########')
-			send_notification(message=f'verify resolve-{region.name}')
-			print('end send_notification ##########')
-			return Response(patchSerializer.data, status=status.HTTP_200_OK)
-		return Response(patchSerializer.errors, status=status.HTTP_400_BAD_REQUEST)
+		async def patchData():
+			print('in async fxn')
+			# engineer uses this to verify faults
+			# print('request fault id type:', type(request.data['faultID']))
+			fault = await sync_to_async(Fault.objects.select_related('logged_by__branch__region').get)(pk=request.data['faultID'])
+			print(f'verified: {fault.verify_resolve}')
+			print(f'verified id: {fault.id}')
+			print(f'verified title: {await sync_to_async(lambda: fault.title)()}')
+			print(f'verified other: {fault.other}')
+			print(f'fault object: {fault}')
+			region = fault.logged_by.branch.region
+			print(f'region: {region.name}')
+			patchSerializer = await sync_to_async(lambda: FaultPatchSerializer(instance=fault, data=request.data, partial=True))()
+			print(f'is patchSerializer valid: {await sync_to_async(patchSerializer.is_valid)()}')
+			if await sync_to_async(patchSerializer.is_valid)():
+				await sync_to_async(patchSerializer.save)()
+				print('patch successful ##########')
+				print('start send_notification ##########')
+				await sync_to_async(send_notification)(message=f'verify resolve-{region.name}')
+				print('end send_notification ##########')
+				return Response(patchSerializer.data, status=status.HTTP_200_OK)
+			else:
+				return Response(patchSerializer.errors, status=status.HTTP_400_BAD_REQUEST)
+		return async_to_sync(patchData)()
 	elif request.method == 'GET':
-		print('##################### custodianPendingFaults (get request) ###########################')
-		faultLoggedBy = User.objects.get(pk=pk)
-		print(f'faultLoggedBy: {faultLoggedBy}')
-		faults = Fault.objects.filter(
-			logged_by=Custodian.objects.get(custodian=faultLoggedBy),
-			verify_resolve=False,
-			confirm_resolve=False,
-		).prefetch_related('partfault', 'componentfault')
-		# print(f'faults: {faults}')
-		print()
-		faultSerializer = FaultReadSerializer(
-				instance=faults,
-				many=True
-			).data
-		for (item, faultRequests) in zip(faultSerializer, faults):
-			# print('############ item #####################')
-			# print(f'faultID: {faultRequests.id}')
-			partRequestExist = faultRequests.partfault.exists()
-			componentRequestExist = faultRequests.componentfault.exists()
-			if any([partRequestExist, componentRequestExist]):
-				faultCompRequest = faultRequests.componentfault.all()
-				faultPartRequest = faultRequests.partfault.all()
-				faultCompRequestSerializer = RequestFaultComponentReadSerializer(instance=faultCompRequest, many=True)
-				faultPartRequestSerializer = RequestFaultPartReadSerializer(instance=faultPartRequest, many=True)
-				item['requestComponent'] = faultCompRequestSerializer.data if faultCompRequestSerializer.data else False
-				item['requestPart'] = faultPartRequestSerializer.data if (faultPartRequestSerializer.data or faultPartRequestSerializer.data) else False
-			item['requestStatus'] = True if any([partRequestExist, componentRequestExist]) else False
+		async def getData():
+			print('##################### custodianPendingFaults (get request) ###########################')
+			faultLoggedBy = await sync_to_async(User.objects.get)(pk=pk)
+			print(f'faultLoggedBy: {faultLoggedBy}')
+			logged_by = await sync_to_async(Custodian.objects.get)(custodian=faultLoggedBy)
+			faults = await sync_to_async(lambda: Fault.objects.filter(
+				logged_by=logged_by,
+				verify_resolve=False,
+				confirm_resolve=False,
+			).prefetch_related('partfault', 'componentfault'))()
+			# print(f'faults: {faults}')
+			print()
+			faultSerializer = await sync_to_async(lambda: FaultReadSerializer(
+					instance=faults,
+					many=True
+				).data)()
+			for (item, faultRequests) in zip(faultSerializer, faults):
+				# print('############ item #####################')
+				# print(f'faultID: {faultRequests.id}')
+				partRequestExist = await sync_to_async(faultRequests.partfault.exists)()
+				componentRequestExist = await sync_to_async(faultRequests.componentfault.exists)()
+				if any([partRequestExist, componentRequestExist]):
+					faultCompRequest = await sync_to_async(lambda: list(faultRequests.componentfault.all()))()
+					faultPartRequest = await sync_to_async(lambda: list(faultRequests.partfault.all()))()
+					faultCompRequestSerializer = await sync_to_async(lambda: RequestFaultComponentReadSerializer(instance=faultCompRequest, many=True).data)()
+					faultPartRequestSerializer = await sync_to_async(lambda: RequestFaultPartReadSerializer(instance=faultPartRequest, many=True).data)()
+					item['requestComponent'] = faultCompRequestSerializer if faultCompRequestSerializer else False
+					item['requestPart'] = faultPartRequestSerializer if faultPartRequestSerializer else False
+				item['requestStatus'] = True if any([partRequestExist, componentRequestExist]) else False
+			return faultSerializer
+		faultSerializer = async_to_sync(getData)()
 		if type == 'list':
 			print(f'length of faultSerializer: {len(faultSerializer)}')
 			return Response(faultSerializer, status=status.HTTP_200_OK)
@@ -187,118 +209,129 @@ def custodianPendingFaults(request, pk=None, type=None):
 
 @api_view(['GET',])
 def totalCustodianPendingFaults(request, pk=None):
-	print('##################### total custodianPendingFaults ###########################')
-	faultLoggedBy = User.objects.get(pk=pk)
-	faults = Fault.objects.filter(
-		logged_by=Custodian.objects.get(custodian=faultLoggedBy),
-		verify_resolve=False,
-		confirm_resolve=False,
-	)
-	print(f'faults: {len(faults)}')
-	print('##################### end total custodianPendingFaults ###########################')
-	return Response({'total': len(faults)}, status=status.HTTP_200_OK)
+	async def getData():
+		print('##################### total custodianPendingFaults ###########################')
+		faultLoggedBy = await sync_to_async(User.objects.get)(pk=pk)
+		# faultLoggedBy = await sync_to_async(lambda: User.objects.get(pk=pk))()
+		custodian = await sync_to_async(Custodian.objects.get)(custodian=faultLoggedBy)
+		faults = await sync_to_async(lambda: list(Fault.objects.filter(
+			logged_by=custodian,
+			verify_resolve=False,
+			confirm_resolve=False,
+		)))()
+		print(f'faults: {len(faults)}')
+		print('##################### end total custodianPendingFaults ###########################')
+		return Response({'total': len(faults)}, status=status.HTTP_200_OK)
+	return async_to_sync(getData)()
 
 # handle engineer, helpdesk, supervisor, etc deliveries counter here.
 @api_view(['GET', 'PATCH'])
 def custodianUnconfirmedResolutions(request, pk=None, type=None):
 	if request.method == 'PATCH':
-		print('##################### custodianUnconfirmedResolutions ###########################')
-		patchData = {}
-		print(f'PATCH payload: {request.data}')
-		faultID = request.data['faultID']
-		faultLoggedBy = User.objects.prefetch_related('custodiandata').get(pk=pk)
-		print(f'faultLoggedBy: {faultLoggedBy}')
-		print(f'faultLoggedBy first_name: {faultLoggedBy.first_name}')
-		print(f'faultLoggedBy email: {faultLoggedBy.email}')
-		# print(f'custodiandata: {faultLoggedBy.email}')
-		custodian = Custodian.objects.get(custodian=faultLoggedBy)
-		print(f'custodian: {custodian}')
-		fault = Fault.objects.filter(logged_by=custodian, pk=faultID).first()
-		print(f'fault: {fault}')
-		# return Response({'msg': 'good'})
-		# print(f'instance: {FaultReadSerializer(fault).data}')
-		patchData['confirmed_by'] = pk
-		patchData['confirm_resolve'] = request.data['confirm_resolve'] == 'true'
-		print(f'patchData: {patchData}')
-		confirmResolution = FaultConfirmResolutionSerializer(instance=fault, data=patchData, partial=True)
-		print(f'confirmResolution is valid: {confirmResolution.is_valid()}')
-		if confirmResolution.is_valid():
-			print(f'confirmResolution passed is valid: {confirmResolution.validated_data}')
-			# print(f'Error passed is valid: {confirmResolution.errors}')
-			####################################
-			confirmResolution.save()
-			####################################
-			print(f'Confirmaion saved')
-			print('start send_notification ##########')
-			send_notification(message=f'confirm resolve-{faultLoggedBy.region.name}')
-			print('end send_notification ##########')
-			payloadKeys = ['resolvedBy', 'managedBy', 'supervisedBy']
-			usersToGetPoints = []
-			# allGood = []
-			print(f'check deliveries: {request.data["deliveries"]}')
-			for index, key in enumerate(payloadKeys):
-				print(f'Checking: {key}')
-				user = User.objects.get(email=request.data[key])
-				print(f'user: {user.first_name}')
-				userDelieries = Deliveries.objects.get(user=user)
-				print(f'got user delivery mail: {userDelieries.user.first_name}')
-				print(f'user email: {request.data[key]}')
-				serializeredUserDeliveries = UserDeliveriesSerializer(
-					instance=userDelieries,
-					data={'deliveries': request.data['deliveries']},
-					partial=True
-				)
-				print(f'check user is valid: {serializeredUserDeliveries.is_valid()}')
-				if serializeredUserDeliveries.is_valid():
-					# serializeredUser = serializeredUser.data
-					# print(f'serialized user: {serializeredUser.validated_data["id"]}')
-					usersToGetPoints.append({index: serializeredUserDeliveries})
-				else:
-					print(f'error: {serializeredUserDeliveries.errors}')
-			print(f'usersToGetPoints: {[obj[i].validated_data for i, obj in enumerate(usersToGetPoints)]}')
-			#####################################################
-			if len(usersToGetPoints) == 3:
-				for index, user in enumerate(usersToGetPoints):
-					# print(f'user dict: {user}')
-					user[index].save()
-					print()
-			print('start send_notification ##########')
-			send_notification(message=f'deliveries point-{faultLoggedBy.region.name}')
-			print('end send_notification ##########')
-			return Response(confirmResolution.data, status=status.HTTP_200_OK)
-		# print(f'Error saving confirmation resolution: {confirmResolution.errors}')
-		print(f'Error saving confirmation resolution: {confirmResolution.errors}')
-		print('##################### end confirmation ###########################')
-		return Response(confirmResolution.errors, status=status.HTTP_400_BAD_REQUEST)
+		async def patchDataFxn():
+			print('##################### custodianUnconfirmedResolutions ###########################')
+			patchData = {}
+			print(f'PATCH payload: {request.data}')
+			faultID = request.data['faultID']
+			faultLoggedBy = await sync_to_async(User.objects.prefetch_related('custodiandata').get)(pk=pk)
+			print(f'faultLoggedBy: {faultLoggedBy}')
+			print(f'faultLoggedBy first_name: {faultLoggedBy.first_name}')
+			print(f'faultLoggedBy email: {faultLoggedBy.email}')
+			region = request.data['region']
+			print(f'region: {region}')
+			# print(f'custodiandata: {faultLoggedBy.email}')
+			custodian = await sync_to_async(Custodian.objects.get)(custodian=faultLoggedBy)
+			# print(f'custodian: {await sync_to_async(custodian.custodian.first_name)()}')
+			fault = await sync_to_async(lambda: Fault.objects.filter(logged_by=custodian, pk=faultID).first())()
+			print(f'fault: {fault}')
+			# return Response({'msg': 'good'})
+			# print(f'instance: {FaultReadSerializer(fault).data}')
+			patchData['confirmed_by'] = pk
+			patchData['confirm_resolve'] = request.data['confirm_resolve'] == 'true'
+			print(f'patchData: {patchData}')
+			confirmResolution = await sync_to_async(lambda: FaultConfirmResolutionSerializer(instance=fault, data=patchData, partial=True))()
+			print(f'confirmResolution is valid: {await sync_to_async(confirmResolution.is_valid)()}')
+			if await sync_to_async(confirmResolution.is_valid)():
+				print(f'confirmResolution passed is valid: {confirmResolution.validated_data}')
+				# print(f'Error passed is valid: {confirmResolution.errors}')
+				####################################
+				await sync_to_async(confirmResolution.save)()
+				####################################
+				print(f'Confirmaion saved')
+				print('start send_notification ##########')
+				await sync_to_async(send_notification)(message=f'confirm resolve-{region}')
+				print('end send_notification ##########')
+				payloadKeys = ['resolvedBy', 'managedBy', 'supervisedBy']
+				usersToGetPoints = []
+				# allGood = []
+				print(f'check deliveries: {request.data["deliveries"]}')
+				for index, key in enumerate(payloadKeys):
+					print(f'Checking: {key}')
+					user = await sync_to_async(User.objects.get)(email=request.data[key])
+					print(f'user: {user.first_name}')
+					userDelieries = await sync_to_async(Deliveries.objects.select_related('user').get)(user=user)
+					print(f'got user delivery mail: {userDelieries.user.first_name}')
+					print(f'user email: {request.data[key]}')
+					serializeredUserDeliveries = await sync_to_async(lambda: UserDeliveriesSerializer(
+						instance=userDelieries,
+						data={'deliveries': request.data['deliveries']},
+						partial=True
+					))()
+					print(f'check user is valid: {await sync_to_async(serializeredUserDeliveries.is_valid)()}')
+					if await sync_to_async(serializeredUserDeliveries.is_valid)():
+						# serializeredUser = serializeredUser.data
+						# print(f'serialized user: {serializeredUser.validated_data["id"]}')
+						usersToGetPoints.append({index: serializeredUserDeliveries})
+					else:
+						print(f'error: {serializeredUserDeliveries.errors}')
+				print(f'usersToGetPoints: {[obj[i].validated_data for i, obj in enumerate(usersToGetPoints)]}')
+				#####################################################
+				if len(usersToGetPoints) == 3:
+					for index, user in enumerate(usersToGetPoints):
+						# print(f'user dict: {user}')
+						await sync_to_async(user[index].save)()
+						print()
+				print('start send_notification ##########')
+				await sync_to_async(send_notification)(message=f'deliveries point-{region}')
+				print('end send_notification ##########')
+				return Response(confirmResolution.data, status=status.HTTP_200_OK)
+			# print(f'Error saving confirmation resolution: {confirmResolution.errors}')
+			print(f'Error saving confirmation resolution: {confirmResolution.errors}')
+			print('##################### end confirmation ###########################')
+			return Response(confirmResolution.errors, status=status.HTTP_400_BAD_REQUEST)
+		return async_to_sync(patchDataFxn)()
 	elif request.method == 'GET':
-		print('##################### custodianUnconfirmedResolutions ###########################')
-		print(f'pk: {pk}')
-		faultLoggedBy = User.objects.get(pk=pk)
-		confirmResolution = Fault.objects.filter(
-			logged_by=Custodian.objects.get(custodian=faultLoggedBy),
-			verify_resolve=True,
-			confirm_resolve=False,
-		)
-		# print(f'confirmResolution: {confirmResolution}')
-		print()
-		faultSerializer = FaultReadSerializer(
-				instance=confirmResolution,
-				many=True
-			).data
-		# requestStatus = []
-		for (item, faultRequests) in zip(faultSerializer, confirmResolution):
-			# print('############ item #####################')
-			# print(f'faultID: {faultRequests.id}')
-			partRequestExist = faultRequests.partfault.exists()
-			componentRequestExist = faultRequests.componentfault.exists()
-			if any([partRequestExist, componentRequestExist]):
-				faultCompRequest = faultRequests.componentfault.all()
-				faultPartRequest = faultRequests.partfault.all()
-				faultCompRequestSerializer = RequestFaultComponentReadSerializer(instance=faultCompRequest, many=True)
-				faultPartRequestSerializer = RequestFaultPartReadSerializer(instance=faultPartRequest, many=True)
-				item['requestComponent'] = faultCompRequestSerializer.data if faultCompRequestSerializer.data else False
-				item['requestPart'] = faultPartRequestSerializer.data if (faultPartRequestSerializer.data) else False
-			item['requestStatus'] = True if any([partRequestExist, componentRequestExist]) else False
+		async def getData():
+			print('##################### custodianUnconfirmedResolutions ###########################')
+			print(f'pk: {pk}')
+			faultLoggedBy = await sync_to_async(User.objects.get)(pk=pk)
+			confirmResolution = await sync_to_async(lambda: Fault.objects.filter(
+				logged_by=Custodian.objects.get(custodian=faultLoggedBy),
+				verify_resolve=True,
+				confirm_resolve=False,
+			))()
+			# print(f'confirmResolution: {confirmResolution}')
+			print()
+			faultSerializer = await sync_to_async(lambda: FaultReadSerializer(
+					instance=confirmResolution,
+					many=True
+				).data)()
+			# requestStatus = []
+			for (item, faultRequests) in zip(faultSerializer, confirmResolution):
+				# print('############ item #####################')
+				# print(f'faultID: {faultRequests.id}')
+				partRequestExist = await sync_to_async(faultRequests.partfault.exists)()
+				componentRequestExist = await sync_to_async(faultRequests.componentfault.exists)()
+				if any([partRequestExist, componentRequestExist]):
+					faultCompRequest = await sync_to_async(lambda: faultRequests.componentfault.all())()
+					faultPartRequest = await sync_to_async(lambda: faultRequests.partfault.all())()
+					faultCompRequestSerializer = await sync_to_async(lambda: RequestFaultComponentReadSerializer(instance=faultCompRequest, many=True).data)()
+					faultPartRequestSerializer = await sync_to_async(lambda: RequestFaultPartReadSerializer(instance=faultPartRequest, many=True).data)()
+					item['requestComponent'] = faultCompRequestSerializer if faultCompRequestSerializer else False
+					item['requestPart'] = faultPartRequestSerializer if faultPartRequestSerializer else False
+				item['requestStatus'] = True if any([partRequestExist, componentRequestExist]) else False
+			return faultSerializer
+		faultSerializer = async_to_sync(getData)()
 
 		if type == 'list':
 			print(f'length of faultSerializer: {len(faultSerializer)}')
@@ -315,123 +348,133 @@ def custodianUnconfirmedResolutions(request, pk=None, type=None):
 
 @api_view(['GET',])
 def totalCustodianUnconfirmedResolutions(request, pk=None):
-	print('##################### total totalCustodianUnconfirmedResolutions ###########################')
-	faultLoggedBy = User.objects.get(pk=pk)
-	confirmResolution = Fault.objects.filter(
-		logged_by=Custodian.objects.get(custodian=faultLoggedBy),
-		verify_resolve=True,
-		confirm_resolve=False,
-	)
-	print(f'faults: {len(confirmResolution)}')
-	print('##################### end totalCustodianUnconfirmedResolutions ###########################')
-	return Response({'total': len(confirmResolution)}, status=status.HTTP_200_OK)
+	async def getData():
+		print('##################### total totalCustodianUnconfirmedResolutions ###########################')
+		faultLoggedBy = await sync_to_async(User.objects.get)(pk=pk)
+		confirmResolution = await sync_to_async(lambda: list(Fault.objects.filter(
+			logged_by=Custodian.objects.get(custodian=faultLoggedBy),
+			verify_resolve=True,
+			confirm_resolve=False,
+		)))()
+		print(f'faults: {len(confirmResolution)}')
+		print('##################### end totalCustodianUnconfirmedResolutions ###########################')
+		return Response({'total': len(confirmResolution)}, status=status.HTTP_200_OK)
+	return async_to_sync(getData)()
 
 @api_view(['DELETE',])
 def deleteFault(request, pk=None):
-	print('##################### delete faults ###########################')
-	print(f'deleting ... ❌❌❌')
-	try:
-		fault = Fault.objects.get(pk=pk)
-	except:
-		return Response({'error': 'fault not found'}, status=status.HTTP_404_NOT_FOUND)
-	print(f'fault: {fault}')
-	fault.delete()
-	print(f'done ✅✅✅')
-	print('start send_notification ##########')
-	# print(f'fault deleted-{fault.logged_by.branch.region.name}')
-	send_notification(message=f'fault deleted-{fault.logged_by.branch.region.name}')
-	print('end send_notification ##########')
-	print('##################### end delete faults ###########################')
-	return Response({'msg': 'deleted successfully'}, status=status.HTTP_200_OK)
+	async def deleteData():
+		print('##################### delete faults ###########################')
+		print(f'delete payload: {request.data}')
+		print(f'deleting ... ❌❌❌')
+		try:
+			fault = await sync_to_async(Fault.objects.get)(pk=pk)
+		except:
+			return Response({'error': 'fault not found'}, status=status.HTTP_404_NOT_FOUND)
+		print(f'faultID: {fault.id}')
+		await sync_to_async(fault.delete)()
+		print(f'done ✅✅✅')
+		region = await sync_to_async(lambda: fault.logged_by.branch.region.name)()
+		print(f'region: {region}')
+		print('start send_notification ##########')
+		# print(f'fault deleted-{fault.logged_by.branch.region.name}')
+		await sync_to_async(send_notification)(message=f'fault deleted-{region}')
+		print('end send_notification ##########')
+		print('##################### end delete faults ###########################')
+		return Response({'msg': 'deleted successfully'}, status=status.HTTP_200_OK)
+	return async_to_sync(deleteData)()
 
-# ########################################
-@api_view(['GET',])
+@api_view(['GET'])
 def engineerPendingFaults(request, pk=None, type=None):
-	print('##################### engineerPendingFaults ###########################')
 	print(f'pk: {pk}')
-	engineer = User.objects.get(pk=pk)
-	print(f'engineer: {engineer}')
-	faults = Fault.objects.prefetch_related('partfault', 'componentfault').filter(
-		assigned_to=engineer,
-		verify_resolve=False,
-		confirm_resolve=False,
-	)
-	faultSerializer = FaultReadSerializer(faults, many=True).data
-	print()
-	for (item, faultRequests) in zip(faultSerializer, faults):
-		faultCompRequest = faultRequests.componentfault.all()
-		faultCompRequestSerializer = RequestFaultComponentReadSerializer(instance=faultCompRequest, many=True)
-		# if faultCompRequestSerializer.data: print(f'faultCompRequestSerializer: {faultCompRequestSerializer.data}')
-		# item['requestStatus'] = True if faultCompRequestSerializer.data else False
-		item['requestComponent'] = faultCompRequestSerializer.data if faultCompRequestSerializer.data else False
-		# print('\n')
-		faultPartRequest = faultRequests.partfault.all()
-		faultPartRequestSerializer = RequestFaultPartReadSerializer(instance=faultPartRequest, many=True)
-		# if faultPartRequestSerializer.data: print(f'faultPartRequestSerializer: {faultPartRequestSerializer.data}')
-		item['requestPart'] = faultPartRequestSerializer.data if (faultPartRequestSerializer.data or faultPartRequestSerializer.data) else False
-		item['requestStatus'] = bool(faultCompRequestSerializer.data) or bool(faultPartRequestSerializer.data)
-		# print(f'#####******########****** requestStatus: {bool(faultCompRequestSerializer.data) or bool(faultPartRequestSerializer.data)}')
-	print('##################### end engineerPendingFaults ###########################')
-	# where i am #############################
+	async def get_data():
+		engineer = await sync_to_async(User.objects.get)(pk=pk)
+		faults_queryset = Fault.objects.prefetch_related('partfault', 'componentfault')
+		faults = await sync_to_async(faults_queryset.filter)(
+			assigned_to=engineer,
+			verify_resolve=False,
+			confirm_resolve=False,
+		)
+
+		faultSerializer = await sync_to_async(lambda: FaultReadSerializer(faults, many=True).data)()
+
+		for (item, faultRequests) in zip(faultSerializer, faults):
+			faultCompRequest = await sync_to_async(lambda: list(faultRequests.componentfault.all()))()
+			faultCompRequestSerializer = await sync_to_async(lambda: RequestFaultComponentReadSerializer(instance=faultCompRequest, many=True).data)()
+
+			item['requestComponent'] = faultCompRequestSerializer if faultCompRequestSerializer else False
+
+			faultPartRequest = await sync_to_async(lambda: list(faultRequests.partfault.all()))()
+			faultPartRequestSerializer = await sync_to_async(lambda: RequestFaultPartReadSerializer(instance=faultPartRequest, many=True).data)()
+
+			item['requestPart'] = faultPartRequestSerializer if faultPartRequestSerializer else False
+			item['requestStatus'] = bool(faultCompRequestSerializer) or bool(faultPartRequestSerializer)
+		return faultSerializer
+
+	faultSerializer = async_to_sync(get_data)()
+
 	if type == 'list':
-		print(f'length of faultSerializer: {len(faultSerializer)}')
-		return Response(faultSerializer, status=status.HTTP_200_OK)
+		return Response(faultSerializer, status=200)
 	elif type == 'notification':
-		faultSerializer = faultSerializer[:5]
-		print(f'length of faultSerializer: {len(faultSerializer)}')
-		return Response(faultSerializer, status=status.HTTP_200_OK)
-	userPaginator = PageNumberPagination()
-	userPaginator.page_size = 10  # Number of items per page
-	paginated_fault = userPaginator.paginate_queryset(faultSerializer, request)
-	print('##################### end engineerUnconfirmedFaults ###########################')
-	return userPaginator.get_paginated_response(paginated_fault)
-	# return userPaginator.get_paginated_response(serialized_data)
+		return Response(faultSerializer[:5], status=200)
+
+	paginator = PageNumberPagination()
+	paginator.page_size = 10
+	paginated_fault = paginator.paginate_queryset(faultSerializer, request)
+
+	return paginator.get_paginated_response(paginated_fault)
 
 @api_view(['GET',])
 def totalEngineerPendingFaults(request, pk=None):
-	print('##################### totalEngineerPendingFaults ###########################')
-	engineer = User.objects.get(pk=pk)
-	totalEngineerFaults = Fault.objects.filter(
-		assigned_to=engineer,
-		verify_resolve=False,
-		confirm_resolve=False,
-	).count()
-	print(f'totalEngineerFaults: {totalEngineerFaults}')
-	print('##################### end totalEngineerPendingFaults ###########################')
-	return Response({'total': totalEngineerFaults}, status=status.HTTP_200_OK)
+	async def getData():
+		print('##################### totalEngineerPendingFaults ###########################')
+		engineer = await sync_to_async(User.objects.get)(pk=pk)
+		totalEngineerFaults = await sync_to_async(lambda: list(Fault.objects.filter(
+			assigned_to=engineer,
+			verify_resolve=False,
+			confirm_resolve=False,
+		)))()
+		print(f'totalEngineerFaults: {len(totalEngineerFaults)}')
+		print('##################### end totalEngineerPendingFaults ###########################')
+		return Response({'total': len(totalEngineerFaults)}, status=status.HTTP_200_OK)
+	return async_to_sync(getData)()
 
 @api_view(['GET'])
 def engineerUnconfirmedFaults(request, pk=None, type=None):
 	print('############## engineerUnconfirmedFaults ##############')
-	print(f'pk: {pk}')
-	engineer = User.objects.get(pk=pk)
-	print(f'engineer: {engineer}')
-	UnconfirmedFaults = Fault.objects.filter(
-		assigned_to=engineer,
-		verify_resolve=True,
-		confirm_resolve=False,
-	).prefetch_related('partfault', 'componentfault')
-	# print(f'faults: {UnconfirmedFaults}')
+	async def get_data():
+		print(f'pk: {pk}')
+		engineer = await sync_to_async(User.objects.get)(pk=pk)
+		print(f'engineer: {engineer}')
+		UnconfirmedFaults = await sync_to_async(lambda: list(Fault.objects.filter(
+			assigned_to=engineer,
+			verify_resolve=True,
+			confirm_resolve=False,
+		).prefetch_related('partfault', 'componentfault')))()
+		# print(f'faults: {UnconfirmedFaults}')
 
-	print()
-	faultSerializer = FaultReadSerializer(
-			instance=UnconfirmedFaults,
-			many=True
-		).data
-	# requestStatus = []
-	for (item, faultRequests) in zip(faultSerializer, UnconfirmedFaults):
-		# print('############ item #####################')
-		# print(f'faultID: {faultRequests.id}')
-		partRequestExist = faultRequests.partfault.exists()
-		componentRequestExist = faultRequests.componentfault.exists()
-		if any([partRequestExist, componentRequestExist]):
-			faultCompRequest = faultRequests.componentfault.all()
-			faultPartRequest = faultRequests.partfault.all()
-			faultCompRequestSerializer = RequestFaultComponentReadSerializer(instance=faultCompRequest, many=True)
-			faultPartRequestSerializer = RequestFaultPartReadSerializer(instance=faultPartRequest, many=True)
-			item['requestComponent'] = faultCompRequestSerializer.data if faultCompRequestSerializer.data else False
-			item['requestPart'] = faultPartRequestSerializer.data if (faultPartRequestSerializer.data) else False
-		item['requestStatus'] = True if any([partRequestExist, componentRequestExist]) else False
+		print()
+		faultSerializer = await sync_to_async(lambda: FaultReadSerializer(
+				instance=UnconfirmedFaults,
+				many=True
+			).data)()
+		# requestStatus = []
+		for (item, faultRequests) in zip(faultSerializer, UnconfirmedFaults):
+			# print('############ item #####################')
+			print(f'faultID: {faultRequests.id}')
+			partRequestExist = await sync_to_async(faultRequests.partfault.exists)()
+			componentRequestExist = await sync_to_async(faultRequests.componentfault.exists)()
+			print(f'exist: {any([partRequestExist, componentRequestExist])}')
+			if any([partRequestExist, componentRequestExist]):
+				faultCompRequest = await sync_to_async(lambda: (faultRequests.componentfault.all()))()
+				faultPartRequest = await sync_to_async(lambda: (faultRequests.partfault.all()))()
+				faultCompRequestSerializer = await sync_to_async(lambda: RequestFaultComponentReadSerializer(instance=faultCompRequest, many=True).data)()
+				faultPartRequestSerializer = await sync_to_async(lambda: RequestFaultPartReadSerializer(instance=faultPartRequest, many=True).data)()
+				item['requestComponent'] = faultCompRequestSerializer if faultCompRequestSerializer else False
+				item['requestPart'] = faultPartRequestSerializer if faultPartRequestSerializer else False
+			item['requestStatus'] = True if any([partRequestExist, componentRequestExist]) else False
+		return faultSerializer
+	faultSerializer = async_to_sync(get_data)()
 	if type == 'list':
 		print(f'length of faultSerializer: {len(faultSerializer)}')
 		return Response(faultSerializer, status=status.HTTP_200_OK)
@@ -448,56 +491,61 @@ def engineerUnconfirmedFaults(request, pk=None, type=None):
 @api_view(['GET',])
 def totalEngineerUnconfirmedFaults(request, pk=None):
 	print('##################### totalEngineerUnconfirmedFaults ###########################')
-	engineer = User.objects.get(pk=pk)
-	totalEngineerUnconfirmedFaults = Fault.objects.filter(
-		assigned_to=engineer,
-		verify_resolve=True,
-		confirm_resolve=False,
-	)
-	print(f'totalEngineerUnconfirmedFaults: {len(totalEngineerUnconfirmedFaults)}')
-	print('##################### end totalEngineerUnconfirmedFaults ###########################')
-	return Response({'total': len(totalEngineerUnconfirmedFaults)}, status=status.HTTP_200_OK)
+	async def getData():
+		engineer = await sync_to_async(User.objects.get)(pk=pk)
+		totalEngineerUnconfirmedFaults = await sync_to_async(lambda: list(Fault.objects.filter(
+			assigned_to=engineer,
+			verify_resolve=True,
+			confirm_resolve=False,
+		)))()
+		print(f'totalEngineerUnconfirmedFaults: {len(totalEngineerUnconfirmedFaults)}')
+		print('##################### end totalEngineerUnconfirmedFaults ###########################')
+		return Response({'total': len(totalEngineerUnconfirmedFaults)}, status=status.HTTP_200_OK)
+	return async_to_sync(getData)()
 
 ###############################################################
 @api_view(['GET'])
 def regionFaults(request, pk=None, type=None):
-	print('############## help-desk/supervisor Faults ##############')
-	user = User.objects.get(pk=pk)
+	async def getData():
+		print('############## help-desk/supervisor Faults ##############')
+		user = await sync_to_async(User.objects.get)(pk=pk)
 
-	print(f'user: {user}')
-	faults = Fault.objects.filter(
-		Q(managed_by=user) | Q(supervised_by=user),
-		## region=region,
-		confirm_resolve=False,
-	).prefetch_related('partfault', 'componentfault')
-	print(f'fault ids: {[fault.id for fault in faults]}')
-	print(f'total faults: {len(faults)}')
-	# for fault in faults:
-	print()
+		print(f'user: {user}')
+		faults = await sync_to_async(lambda: list(Fault.objects.filter(
+			Q(managed_by=user) | Q(supervised_by=user),
+			## region=region,
+			confirm_resolve=False,
+		).prefetch_related('partfault', 'componentfault')))()
+		print(f'fault ids: {[fault.id for fault in faults]}')
+		print(f'total faults: {len(faults)}')
+		# for fault in faults:
+		print()
 
-	faultSerializer = FaultReadSerializer(
-			instance=faults,
-			many=True
-		).data
-	for (item, faultRequests) in zip(faultSerializer, faults):
+		faultSerializer = await sync_to_async(lambda: FaultReadSerializer(
+				instance=faults,
+				many=True
+			).data)()
+		for (item, faultRequests) in zip(faultSerializer, faults):
 
-		partRequestExist = faultRequests.partfault.exists()
-		componentRequestExist = faultRequests.componentfault.exists()
-		if partRequestExist or componentRequestExist:
-			# item['custodianFirstName'] = engineer.first_name
-			faultCompRequest = faultRequests.componentfault.all()
-			faultPartRequest = faultRequests.partfault.all()
+			partRequestExist = await sync_to_async(faultRequests.partfault.exists)()
+			componentRequestExist = await sync_to_async(faultRequests.componentfault.exists)()
+			if partRequestExist or componentRequestExist:
+				# item['custodianFirstName'] = engineer.first_name
+				faultCompRequest = await sync_to_async(lambda: list(faultRequests.componentfault.all()))()
+				faultPartRequest = await sync_to_async(lambda: list(faultRequests.partfault.all()))()
 
-			faultCompRequestSerializer = RequestFaultComponentReadSerializer(instance=faultCompRequest, many=True).data
-			for component in faultCompRequestSerializer:
-				component['type'] = 'component'
-			faultPartRequestSerializer = RequestFaultPartReadSerializer(instance=faultPartRequest, many=True).data
-			for part in faultPartRequestSerializer:
-				part['type'] = 'part'
+				faultCompRequestSerializer = await sync_to_async(lambda: RequestFaultComponentReadSerializer(instance=faultCompRequest, many=True).data)()
+				for component in faultCompRequestSerializer:
+					component['type'] = 'component'
+				faultPartRequestSerializer = await sync_to_async(lambda: RequestFaultPartReadSerializer(instance=faultPartRequest, many=True).data)()
+				for part in faultPartRequestSerializer:
+					part['type'] = 'part'
 
-			item['requestComponent'] = faultCompRequestSerializer if faultCompRequestSerializer else False
-			item['requestPart'] = faultPartRequestSerializer if faultPartRequestSerializer else False
-		item['requestStatus'] = bool(partRequestExist) or bool(componentRequestExist)
+				item['requestComponent'] = faultCompRequestSerializer if faultCompRequestSerializer else False
+				item['requestPart'] = faultPartRequestSerializer if faultPartRequestSerializer else False
+			item['requestStatus'] = bool(partRequestExist) or bool(componentRequestExist)
+		return faultSerializer
+	faultSerializer = async_to_sync(getData)()
 	if type == 'list':
 		print(f'length of faultSerializer: {len(faultSerializer)}')
 		return Response(faultSerializer, status=status.HTTP_200_OK)
@@ -513,47 +561,52 @@ def regionFaults(request, pk=None, type=None):
 
 @api_view(['GET',])
 def totalRegionFaults(request, pk=None):
-	print('##################### total help-desk/supervisor Faults ###########################')
-	user = User.objects.get(pk=pk)
-	totalFaults = Fault.objects.filter(
-		# managed_by=user,
-		Q(managed_by=user) | Q(supervised_by=user),
-		verify_resolve=False,
-		confirm_resolve=False,
-	).count()
-	print(f'totalFaults: {totalFaults}')
-	print('##################### end total help-desk/supervisor Faults ###########################')
-	return Response({'total': totalFaults}, status=status.HTTP_200_OK)
+	async def getData():
+		print('##################### total help-desk/supervisor Faults ###########################')
+		user = await sync_to_async(User.objects.get)(pk=pk)
+		totalFaults = await sync_to_async(lambda: list(Fault.objects.filter(
+			# managed_by=user,
+			Q(managed_by=user) | Q(supervised_by=user),
+			verify_resolve=False,
+			confirm_resolve=False,
+		)))()
+		print(f'totalFaults: {len(totalFaults)}')
+		print('##################### end total help-desk/supervisor Faults ###########################')
+		return Response({'total': len(totalFaults)}, status=status.HTTP_200_OK)
+	return async_to_sync(getData)()
 
 ####################################################################
 @api_view(['GET',])
 def engineerUnresolvedFaults(request, pk=None, type=None):
-	print('##################### engineerUnresolvedFaults ###########################')
-	print(f'pk: {pk}')
-	engineer = User.objects.get(pk=pk)
-	print(f'engineer: {engineer}')
-	faults = Fault.objects.prefetch_related('partfault', 'componentfault').filter(
-		assigned_to=engineer,
-		confirm_resolve=False,
-	)
-	faultSerializer = FaultReadSerializer(faults, many=True).data
-	for (item, faultRequests) in zip(faultSerializer, faults):
-		faultCompRequest = faultRequests.componentfault.all()
-		faultCompRequestSerializer = RequestFaultComponentReadSerializer(instance=faultCompRequest, many=True).data
-		for component in faultCompRequestSerializer:
-			component['type'] = 'component'
-		# if faultCompRequestSerializer.data: print(f'faultCompRequestSerializer: {faultCompRequestSerializer.data}')
-		# item['requestStatus'] = True if faultCompRequestSerializer.data else False
-		item['requestComponent'] = faultCompRequestSerializer if faultCompRequestSerializer else False
-		# print('\n')
-		faultPartRequest = faultRequests.partfault.all()
-		faultPartRequestSerializer = RequestFaultPartReadSerializer(instance=faultPartRequest, many=True).data
-		for part in faultPartRequestSerializer:
-			part['type'] = 'part'
-		# if faultPartRequestSerializer.data: print(f'faultPartRequestSerializer: {faultPartRequestSerializer.data}')
-		item['requestPart'] = faultPartRequestSerializer if faultPartRequestSerializer else False
-		item['requestStatus'] = bool(faultCompRequestSerializer) or bool(faultPartRequestSerializer)
-		# print(f'#####******########****** requestStatus')
+	async def getData():
+		print('##################### engineerUnresolvedFaults ###########################')
+		print(f'pk: {pk}')
+		engineer = await sync_to_async(User.objects.get)(pk=pk)
+		print(f'engineer: {engineer}')
+		faults = await sync_to_async(lambda: list(Fault.objects.prefetch_related('partfault', 'componentfault').filter(
+			assigned_to=engineer,
+			confirm_resolve=False,
+		)))()
+		faultSerializer = await sync_to_async(lambda: FaultReadSerializer(faults, many=True).data)()
+		for (item, faultRequests) in zip(faultSerializer, faults):
+			faultCompRequest = await sync_to_async(lambda: faultRequests.componentfault.all())()
+			faultCompRequestSerializer = await sync_to_async(lambda: RequestFaultComponentReadSerializer(instance=faultCompRequest, many=True).data)()
+			for component in faultCompRequestSerializer:
+				component['type'] = 'component'
+			# if faultCompRequestSerializer.data: print(f'faultCompRequestSerializer: {faultCompRequestSerializer.data}')
+			# item['requestStatus'] = True if faultCompRequestSerializer.data else False
+			item['requestComponent'] = faultCompRequestSerializer if faultCompRequestSerializer else False
+			# print('\n')
+			faultPartRequest = await sync_to_async(lambda: faultRequests.partfault.all())()
+			faultPartRequestSerializer = await sync_to_async(lambda: RequestFaultPartReadSerializer(instance=faultPartRequest, many=True).data)()
+			for part in faultPartRequestSerializer:
+				part['type'] = 'part'
+			# if faultPartRequestSerializer.data: print(f'faultPartRequestSerializer: {faultPartRequestSerializer.data}')
+			item['requestPart'] = faultPartRequestSerializer if faultPartRequestSerializer else False
+			item['requestStatus'] = bool(faultCompRequestSerializer) or bool(faultPartRequestSerializer)
+			# print(f'#####******########****** requestStatus')
+		return faultSerializer
+	faultSerializer = async_to_sync(getData)()
 	if type == 'list':
 		print(f'length of faultSerializer: {len(faultSerializer)}')
 		return Response(faultSerializer, status=status.HTTP_200_OK)
@@ -573,36 +626,39 @@ def engineerUnresolvedFaults(request, pk=None, type=None):
 ####################################################################
 @api_view(['GET',])
 def custodianUnresolvedFaults(request, pk=None, type=None):
-	print('##################### custodianUnresolvedFaults ###########################')
-	print(f'pk: {pk}')
-	custodian = User.objects.get(pk=pk)
-	print(f'custodian: {custodian}')
-	faults = Fault.objects.filter(
-		logged_by=Custodian.objects.get(custodian=custodian),
-		confirm_resolve=False,
-	).prefetch_related('partfault', 'componentfault')
-	faultSerializer = FaultReadSerializer(
-			instance=faults,
-			many=True
-		).data
-	# requestStatus = []
-	for (item, faultRequests) in zip(faultSerializer, faults):
-		# print('############ item #####################')
-		# print(f'faultID: {faultRequests.id}')
-		partRequestExist = faultRequests.partfault.exists()
-		componentRequestExist = faultRequests.componentfault.exists()
-		if any([partRequestExist, componentRequestExist]):
-			faultCompRequest = faultRequests.componentfault.all()
-			faultPartRequest = faultRequests.partfault.all()
-			faultCompRequestSerializer = RequestFaultComponentReadSerializer(instance=faultCompRequest, many=True).data
-			for component in faultCompRequestSerializer:
-				component['type'] = 'component'
-			faultPartRequestSerializer = RequestFaultPartReadSerializer(instance=faultPartRequest, many=True).data
-			for part in faultPartRequestSerializer:
-				part['type'] = 'part'
-			item['requestComponent'] = faultCompRequestSerializer if faultCompRequestSerializer else False
-			item['requestPart'] = faultPartRequestSerializer if (faultPartRequestSerializer) else False
-		item['requestStatus'] = True if any([partRequestExist, componentRequestExist]) else False
+	async def getData():
+		print('##################### custodianUnresolvedFaults ###########################')
+		print(f'pk: {pk}')
+		custodian = await sync_to_async(User.objects.get)(pk=pk)
+		print(f'custodian: {custodian}')
+		faults = await sync_to_async(lambda: list(Fault.objects.filter(
+			logged_by=Custodian.objects.get(custodian=custodian),
+			confirm_resolve=False,
+		).prefetch_related('partfault', 'componentfault')))()
+		faultSerializer = await sync_to_async(lambda: FaultReadSerializer(
+				instance=faults,
+				many=True
+			).data)()
+		# requestStatus = []
+		for (item, faultRequests) in zip(faultSerializer, faults):
+			# print('############ item #####################')
+			# print(f'faultID: {faultRequests.id}')
+			partRequestExist = await sync_to_async(faultRequests.partfault.exists)()
+			componentRequestExist = await sync_to_async(faultRequests.componentfault.exists)()
+			if any([partRequestExist, componentRequestExist]):
+				faultCompRequest = await sync_to_async(lambda: list(faultRequests.componentfault.all()))()
+				faultPartRequest = await sync_to_async(lambda: list(faultRequests.partfault.all()))()
+				faultCompRequestSerializer = await sync_to_async(lambda: RequestFaultComponentReadSerializer(instance=faultCompRequest, many=True).data)()
+				for component in faultCompRequestSerializer:
+					component['type'] = 'component'
+				faultPartRequestSerializer = await sync_to_async(lambda: RequestFaultPartReadSerializer(instance=faultPartRequest, many=True).data)()
+				for part in faultPartRequestSerializer:
+					part['type'] = 'part'
+				item['requestComponent'] = faultCompRequestSerializer if faultCompRequestSerializer else False
+				item['requestPart'] = faultPartRequestSerializer if (faultPartRequestSerializer) else False
+			item['requestStatus'] = True if any([partRequestExist, componentRequestExist]) else False
+		return faultSerializer
+	faultSerializer = async_to_sync(getData)()
 	if type == 'list':
 		print(f'length of faultSerializer: {len(faultSerializer)}')
 		return Response(faultSerializer, status=status.HTTP_200_OK)
@@ -621,47 +677,50 @@ def custodianUnresolvedFaults(request, pk=None, type=None):
 ################# hr #####################
 @api_view(['GET'])
 def allFaultsWRequests(request, pk=None, type=None):
-	print('############## human-resource Faults ##############')
-	user = User.objects.get(pk=pk)
+	async def getData():
+		print('############## human-resource Faults ##############')
+		user = await sync_to_async(User.objects.get)(pk=pk)
 
-	print(f'user: {user}')
-	# filters for faults with requests that are yet to be atended to
-	faults = Fault.objects.filter(
-		Q(partfault__isnull=False) | Q(componentfault__isnull=False),
-		Q(partfault__approved=False, partfault__rejected=False) |
-		Q(componentfault__approved=False, componentfault__rejected=False),
-		confirm_resolve=False,
-		verify_resolve=False
-	).distinct().prefetch_related('partfault', 'componentfault')
+		print(f'user: {user}')
+		# filters for faults with requests that are yet to be atended to
+		faults = await sync_to_async(lambda: list(Fault.objects.filter(
+			Q(partfault__isnull=False) | Q(componentfault__isnull=False),
+			Q(partfault__approved=False, partfault__rejected=False) |
+			Q(componentfault__approved=False, componentfault__rejected=False),
+			confirm_resolve=False,
+			verify_resolve=False
+		).distinct().prefetch_related('partfault', 'componentfault')))()
 
-	print(f'fault ids: {[fault.id for fault in faults]}')
-	print(f'total faults: {len(faults)}')
-	# return Response({'allgood'})
-	# for fault in faults:
-	print()
+		print(f'fault ids: {[fault.id for fault in faults]}')
+		print(f'total faults: {len(faults)}')
+		# return Response({'allgood'})
+		# for fault in faults:
+		print()
 
-	faultSerializer = FaultReadSerializer(
-			instance=faults,
-			many=True
-		).data
-	for (item, faultRequests) in zip(faultSerializer, faults):
-		partRequestExist = faultRequests.partfault.exists()
-		componentRequestExist = faultRequests.componentfault.exists()
-		# if partRequestExist or componentRequestExist:
-			# item['custodianFirstName'] = engineer.first_name
-		faultCompRequest = faultRequests.componentfault.all()
-		faultPartRequest = faultRequests.partfault.all()
+		faultSerializer = await sync_to_async(lambda: FaultReadSerializer(
+				instance=faults,
+				many=True
+			).data)()
+		for (item, faultRequests) in zip(faultSerializer, faults):
+			partRequestExist = await sync_to_async(faultRequests.partfault.exists)()
+			componentRequestExist = await sync_to_async(faultRequests.componentfault.exists)()
+			# if partRequestExist or componentRequestExist:
+				# item['custodianFirstName'] = engineer.first_name
+			faultCompRequest = await sync_to_async(lambda: list(faultRequests.componentfault.all()))()
+			faultPartRequest = await sync_to_async(lambda: list(faultRequests.partfault.all()))()
 
-		faultCompRequestSerializer = RequestFaultComponentReadSerializer(instance=faultCompRequest, many=True).data
-		for component in faultCompRequestSerializer:
-			component['type'] = 'component'
-		faultPartRequestSerializer = RequestFaultPartReadSerializer(instance=faultPartRequest, many=True).data
-		for part in faultPartRequestSerializer:
-			part['type'] = 'part'
+			faultCompRequestSerializer = await sync_to_async(lambda: RequestFaultComponentReadSerializer(instance=faultCompRequest, many=True).data)()
+			for component in faultCompRequestSerializer:
+				component['type'] = 'component'
+			faultPartRequestSerializer = await sync_to_async(lambda: RequestFaultPartReadSerializer(instance=faultPartRequest, many=True).data)()
+			for part in faultPartRequestSerializer:
+				part['type'] = 'part'
 
-		item['requestComponent'] = faultCompRequestSerializer if faultCompRequestSerializer else False
-		item['requestPart'] = faultPartRequestSerializer if faultPartRequestSerializer else False
-		item['requestStatus'] = bool(partRequestExist) or bool(componentRequestExist)
+			item['requestComponent'] = faultCompRequestSerializer if faultCompRequestSerializer else False
+			item['requestPart'] = faultPartRequestSerializer if faultPartRequestSerializer else False
+			item['requestStatus'] = bool(partRequestExist) or bool(componentRequestExist)
+		return faultSerializer
+	faultSerializer = async_to_sync(getData)()
 	if type == 'list':
 		print(f'length of faultSerializer: {len(faultSerializer)}')
 		return Response(faultSerializer, status=status.HTTP_200_OK)
@@ -677,16 +736,18 @@ def allFaultsWRequests(request, pk=None, type=None):
 
 @api_view(['GET',])
 def totalAllFaultsWRequests(request, pk=None):
-	print('##################### total human-resource Faults ###########################')
-	user = User.objects.get(pk=pk)
-	totalFaults = Fault.objects.filter(
-		Q(partfault__isnull=False) | Q(componentfault__isnull=False),
-		Q(partfault__approved=False, partfault__rejected=False) |
-		Q(componentfault__approved=False, componentfault__rejected=False),
-		confirm_resolve=False,
-		verify_resolve=False
-	).distinct().prefetch_related('partfault', 'componentfault')
-	totalFaults = len(totalFaults)
-	print(f'totalFaults: {totalFaults}')
-	print('##################### end total human-resource Faults ###########################')
-	return Response({'total': totalFaults}, status=status.HTTP_200_OK)
+	async def getData():
+		print('##################### total human-resource Faults ###########################')
+		user = await sync_to_async(User.objects.get)(pk=pk)
+		totalFaults = await sync_to_async(lambda: list(Fault.objects.filter(
+			Q(partfault__isnull=False) | Q(componentfault__isnull=False),
+			Q(partfault__approved=False, partfault__rejected=False) |
+			Q(componentfault__approved=False, componentfault__rejected=False),
+			confirm_resolve=False,
+			verify_resolve=False
+		).distinct().prefetch_related('partfault', 'componentfault')))()
+		totalFaults = len(totalFaults)
+		print(f'totalFaults: {totalFaults}')
+		print('##################### end total human-resource Faults ###########################')
+		return Response({'total': totalFaults}, status=status.HTTP_200_OK)
+	return async_to_sync(getData)()

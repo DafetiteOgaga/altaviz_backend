@@ -25,8 +25,8 @@ class CustodianSerializer(serializers.ModelSerializer):
 		# fields = '__all__'
 	def get_custodian(self, instance):
 		# Lazy import inside the method
-		print(f'instance.custodian ##########: {instance}')
-		print(f'instance.custodian ##########: {instance.custodian}')
+		# print(f'instance.custodian ##########: {instance}')
+		# print(f'instance.custodian ##########: {instance.custodian}')
 		# print(f'instance.custodian##########: {instance.email}')
 		from app_users.serializers import UserSummarizedDetailsSerializer
 		return UserSummarizedDetailsSerializer(instance.custodian).data
