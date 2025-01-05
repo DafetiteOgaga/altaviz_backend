@@ -16,14 +16,27 @@ class Component(models.Model):
 	name = models.ForeignKey('ComponentName', on_delete=models.PROTECT, related_name='componentnames')
 	quantity = models.IntegerField(default=0)
 	user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True)
+	action = models.BooleanField(default=False)
 	class Meta:
 		ordering = ['id']
+
 	def save(self, *args, **kwargs):
+		print(f'self.action 11111: {self.action}')
 		if not self.pk: # Check if a component with the same name exists
+			print(f'self.action 22222: {self.action}')
+			print(f'self.quantity 22222: {self.quantity}')
 			existing_component = Component.objects.filter(name=self.name).first()
+			print(f'self.action 33333: {self.action}')
 			if existing_component:
+				print(f'self.action 44444: {self.action}')
+				print(f'existing_component.action: {existing_component.action}')
 				# Update the quantity of the existing component
-				existing_component.quantity = F('quantity') + self.quantity
+				if self.action:
+					print(f'action is true: removing {self.quantity} from {existing_component.quantity}')
+					existing_component.quantity = F('quantity') - self.quantity
+				else:
+					print(f'action is false: adding {self.quantity} to {existing_component.quantity}')
+					existing_component.quantity = F('quantity') + self.quantity
 				existing_component.save(update_fields=["quantity"])
 				return  # Prevent saving a new instance
 
@@ -44,16 +57,23 @@ class Part(models.Model):
 	name = models.ForeignKey('PartName', on_delete=models.PROTECT, related_name='partnames')
 	quantity = models.IntegerField(default=0)
 	user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True)
+	action = models.BooleanField(default=False)
 	class Meta:
 		ordering = ['id']
 	def save(self, *args, **kwargs):
 		if not self.pk: # Check if a component with the same name exists
 			existing_part = Part.objects.filter(name=self.name).first()
-			if existing_part:
-				# Update the quantity of the existing component
+			if self.action:
+				print(f'action is true: removing {self.quantity} from {existing_part.quantity}')
+				existing_part.quantity = F('quantity') - self.quantity
+			else:
+				print(f'action is false: adding {self.quantity} to {existing_part.quantity}')
 				existing_part.quantity = F('quantity') + self.quantity
-				existing_part.save(update_fields=["quantity"])
-				return  # Prevent saving a new instance
+			# if existing_part:
+			# 	# Update the quantity of the existing component
+			# 	existing_part.quantity = F('quantity') + self.quantity
+			existing_part.save(update_fields=["quantity"])
+			return  # Prevent saving a new instance
 
 		# If no existing component, proceed with saving the new instance
 		super().save(*args, **kwargs)
@@ -89,7 +109,8 @@ class RequestComponent(models.Model):
 		ordering = ['id']
 
 class UnconfirmedPart(models.Model):
-	name = models.CharField(max_length=100)
+	name = models.ForeignKey(PartName, on_delete=models.PROTECT, related_name="fixedpartnames", null=True, blank=True)
+	# name = models.CharField(max_length=100)
 	quantity = models.IntegerField(default=0)
 	user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True, related_name='partpostedby')
 	# status = models.BooleanField(default=False)
