@@ -293,8 +293,9 @@ def unapprovedPart(request, pk=None, type=None):
 			print(f'dictOfList: {dictOfLists}')
 			print(f'dictOfList length: {length}')
 			for key in dictOfLists.values():
+				nameOfPart = await sync_to_async(PartName.objects.get)(name=request.data[key[0]])
 				cleanedData = {
-					'name': request.data[key[0]],
+					'name': nameOfPart.id,
 					'quantity': request.data[key[1]]
 				}
 				# print(f'cleanedData: {cleanedData}')
@@ -338,7 +339,8 @@ def unapprovedPart(request, pk=None, type=None):
 			user = await sync_to_async(User.objects.get)(pk=pk)
 			print(f'user: {user}')
 			print(f'user.role: {user.role}')
-			part = await sync_to_async(UnconfirmedPart.objects.get)(pk=request.data['faultID'])
+			idKey = request.data.get('requestID') or request.data.get('itemID')
+			part = await sync_to_async(UnconfirmedPart.objects.select_related('name').get)(pk=idKey)
 			print(f'part: {part}')
 			print(f'status (before)=> approved: {part.approved}, rejected: {part.rejected}')
 			part.approved = request.data.get('approved')=='true'
@@ -346,6 +348,18 @@ def unapprovedPart(request, pk=None, type=None):
 			part.approved_by = user
 			await sync_to_async(part.save)()
 			print(f'status (after)=> approved: {part.approved}, rejected: {part.rejected}')
+			print(f'fixed part name: {part.name.name}')
+			print(f'fixed part quantity: {part.quantity}')
+			if request.data.get('approved') == 'true':
+				partialData = {'name': part.name.name, 'quantity': part.quantity, 'action': False}
+				inventoryUpdateserializer = await sync_to_async(lambda: PartSerializer(data=partialData))()
+				print(f'is serializer valid:', await sync_to_async(inventoryUpdateserializer.is_valid)())
+				if await sync_to_async(inventoryUpdateserializer.is_valid)():
+					await sync_to_async(inventoryUpdateserializer.save)()
+					print(f'saved: {inventoryUpdateserializer.data}')
+				else:
+					print(f'serializer.errors: {inventoryUpdateserializer.errors}')
+					return Response(inventoryUpdateserializer.errors, status=status.HTTP_400_BAD_REQUEST)
 			reaponse = 'approved' if part.approved else 'rejected'
 			print('start send_notification ##########')
 			await sync_to_async(send_notification)(message='approve or reject fixed parts-hr')
@@ -504,7 +518,9 @@ def requestComponent(request, pk=None, type=None):
 			print(f'patch payload: {request.data}')
 			# note: only workshop would not require fault field
 			print('################# requestComponent ####################')
-			componentRequest = await sync_to_async(RequestComponent.objects.select_related('user__region').get)(pk=request.data['faultID'])
+			componentRequest = await sync_to_async(RequestComponent.objects.select_related(
+				'user__region', 'name'
+			).get)(pk=request.data['requestID'])
 			print(f'componentRequest: {componentRequest}')
 			region = componentRequest.user.region.name
 			print(f'region: {region}')
@@ -514,10 +530,24 @@ def requestComponent(request, pk=None, type=None):
 			print(f'serializedComponentRequest is valid: {await sync_to_async(serializedComponentRequest.is_valid)()}')
 			# return Response({'msg':'allgood'})
 			if await sync_to_async(serializedComponentRequest.is_valid)():
-				print(f'serializedComponentRequest is valid')
+				if request.data.get('approved'):
+					partialData = {
+						'name': componentRequest.name.name,
+						'quantity': componentRequest.quantityRequested,
+						'user': request.data['approved_by'],
+					}
+					UpdateComponentSerializer = await sync_to_async(
+					lambda: ComponentSerializer(
+							data=partialData, context={'action': True}
+						)
+					)()
+					print(f'is serializer valid:', await sync_to_async(UpdateComponentSerializer.is_valid)())
+					if await sync_to_async(UpdateComponentSerializer.is_valid)():
+						print(f'removing {componentRequest.quantityRequested} items from {componentRequest.name.name} in inventory')
+						await sync_to_async(UpdateComponentSerializer.save)()
 				await sync_to_async(serializedComponentRequest.save)()
 				print(f'serializedComponentRequest saved #################')
-				updatedComponentRequest = await sync_to_async(RequestComponent.objects.get)(pk=request.data['faultID'])
+				updatedComponentRequest = await sync_to_async(RequestComponent.objects.get)(pk=request.data['requestID'])
 				print(f'status (after)=> approved: {updatedComponentRequest.approved}, rejected: {updatedComponentRequest.rejected}')
 				reaponse = 'approved' if updatedComponentRequest.approved else 'rejected'
 				print('start send_notification ##########')
@@ -693,7 +723,9 @@ def requestPart(request, pk=None, type=None):
 			# note: only workshop would not require fault field
 			print('################# requestPart ####################')
 			print(f'patch payload: {request.data}')
-			partRequest = await sync_to_async(RequestPart.objects.select_related('user__region').get)(pk=request.data['faultID'])
+			partRequest = await sync_to_async(RequestPart.objects.select_related(
+				'user__region', 'name'
+			).get)(pk=request.data['requestID'])
 			print(f'partRequest: {partRequest}')
 			region = partRequest.user.region.name
 			print(f'region: {region}')
@@ -702,7 +734,21 @@ def requestPart(request, pk=None, type=None):
 			))()
 			print(f'serializedPartRequest is valid: {await sync_to_async(serializedPartRequest.is_valid)()}')
 			if await sync_to_async(serializedPartRequest.is_valid)():
-				print(f'serializedPartRequest is valid')
+				if request.data.get('approved'):
+					partialData = {
+						'name': partRequest.name.name,
+						'quantity': partRequest.quantityRequested,
+						'user': request.data['approved_by'],
+					}
+					UpdatePartSerializer = await sync_to_async(
+					lambda: PartSerializer(
+							data=partialData, context={'action': True}
+						)
+					)()
+					print(f'is serializer valid:', await sync_to_async(UpdatePartSerializer.is_valid)())
+					if await sync_to_async(UpdatePartSerializer.is_valid)():
+						print(f'removing {partRequest.quantityRequested} items from {partRequest.name.name} in inventory')
+						await sync_to_async(UpdatePartSerializer.save)()
 				await sync_to_async(serializedPartRequest.save)()
 				print(f'serializedPartRequest saved #################')
 				print('start send_notification ##########')
@@ -867,7 +913,6 @@ def regionUserRequests(request, pk=None, type=None):
 			# print(f'comp: {componentRequestExist}, part: {partRequestExist}')
 			print(f'{eIndex+1}. engineer: {engineer.first_name} - has requests: {partRequestExist or componentRequestExist}')
 
-			# print(f'component requests: {[f"faultID {fault.id}: {[comp.id for comp in await sync_to_async(lambda: list(fault.componentfault.all()))()]}" for fault in engineer.unresolved_faults if componentRequestExist]}')
 			for fault in engineer.unresolved_faults:
 				print(f'	faultID: {fault.id} verified: {fault.verify_resolve}, confirmed: {fault.confirm_resolve}')
 				for compReq in await sync_to_async(lambda: list(fault.componentfault.all()))():
@@ -1128,11 +1173,8 @@ def requestStatus(request, pk=None):
 			if 'requestComponentIds' in requestList:
 				for compRequestID in request.data['requestComponentIds'].split(','):
 					print(f'compRequestID: {compRequestID}')
-					# print(f'type of value: {type(compRequestID)}')
-					# compRequestID = int(compRequestID)
-					# print(f'type of value: {type(compRequestID)}')
 					compRequestInstance = await sync_to_async(RequestComponent.objects.select_related(
-						'fault__logged_by__branch__region'
+						'fault__logged_by__branch__region', 'name'
 					).get)(pk=compRequestID)
 					region = compRequestInstance.fault.logged_by.branch.region
 					# print(f'approved: {compRequestInstance.approved}, rejected: {compRequestInstance.rejected}')
@@ -1143,6 +1185,21 @@ def requestStatus(request, pk=None):
 					compSerializer = await sync_to_async(lambda: RequestComponentUpdateSerializer(instance=compRequestInstance, data=cleanedData, partial=True))()
 					print(f'compSerializer is valid: {await sync_to_async(compSerializer.is_valid)()}')
 					if await sync_to_async(compSerializer.is_valid)():
+						if 'approved' in requestList:
+							partialData = {
+								'name': compRequestInstance.name.name,
+								'quantity': compRequestInstance.quantityRequested,
+								'user': cleanedData['approved_by'],
+							}
+							UpdateComponentSerializer = await sync_to_async(
+							lambda: ComponentSerializer(
+									data=partialData, context={'action': True}
+								)
+							)()
+							print(f'is serializer valid:', await sync_to_async(UpdateComponentSerializer.is_valid)())
+							if await sync_to_async(UpdateComponentSerializer.is_valid)():
+								print(f'removing {compRequestInstance.quantityRequested} items from {compRequestInstance.name.name} in inventory')
+								await sync_to_async(UpdateComponentSerializer.save)()
 						await sync_to_async(compSerializer.save)()
 						print(f'compSerializer for request {compRequestID} is saved successfully. ##################')
 					print(f'compserializer error: {compSerializer.errors}')
@@ -1151,7 +1208,7 @@ def requestStatus(request, pk=None):
 			if 'requestPartIDs' in requestList:
 				for partRequestID in request.data['requestPartIDs'].split(','):
 					partRequestInstance = await sync_to_async(RequestPart.objects.select_related(
-						'fault__logged_by__branch__region'
+						'fault__logged_by__branch__region', 'name'
 					).get)(pk=partRequestID)
 					region = partRequestInstance.fault.logged_by.branch.region
 					if partRequestInstance.approved or partRequestInstance.rejected:
@@ -1160,6 +1217,21 @@ def requestStatus(request, pk=None):
 					partSerializer = await sync_to_async(lambda: RequestPartUpdateSerializer(instance=partRequestInstance, data=cleanedData, partial=True))()
 					print(f'partSerializer is valid: {await sync_to_async(partSerializer.is_valid)()}')
 					if await sync_to_async(partSerializer.is_valid)():
+						if 'approved' in requestList:
+							partialData = {
+								'name': partRequestInstance.name.name,
+								'quantity': partRequestInstance.quantityRequested,
+								'user': cleanedData['approved_by'],
+							}
+							UpdatePartSerializer = await sync_to_async(
+							lambda: PartSerializer(
+									data=partialData, context={'action': True}
+								)
+							)()
+							print(f'is serializer valid:', await sync_to_async(UpdatePartSerializer.is_valid)())
+							if await sync_to_async(UpdatePartSerializer.is_valid)():
+								print(f'removing {partRequestInstance.quantityRequested} items from {partRequestInstance.name.name} in inventory')
+								await sync_to_async(UpdatePartSerializer.save)()
 						await sync_to_async(partSerializer.save)()
 						print(f'partSerializer for request {partRequestID} is saved successfully. ##################')
 					print(f'partSerializer error: {partSerializer.errors}')
@@ -1542,7 +1614,7 @@ def workshopRequests(request, pk=None, type=None):
 		componentRequests = await sync_to_async(lambda: list(RequestComponent.objects.select_related(
 			'user'
 		).filter(
-			user=user,
+			# user=user,
 			user__role='workshop',
 			approved=False,
 			rejected=False
@@ -1573,7 +1645,7 @@ def totalWorkshopRequests(request, pk=None, type=None):
 		user = await sync_to_async(User.objects.get)(pk=pk)
 		print(f'user: {user}')
 		componentRequests = await sync_to_async(lambda: list(RequestComponent.objects.filter(
-			user=user,
+			# user=user,
 			user__role='workshop',
 			approved=False,
 			rejected=False
