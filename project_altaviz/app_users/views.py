@@ -50,8 +50,7 @@ def updateDetailesFxn(requestData, user):
 	# return Response(serializedUser.data, status=status.HTTP_201_CREATED)
 
 def getOrCreateBankLocationBranch(strObj: dict=None, locationID: int=None,  user: object=None):
-	## region
-	## region = Region.objects.get(name=strObj['regionStr'])
+	print()
 	print(f'in getOrCreateBankLocationBranch fxn')
 	print(f'strObj: {strObj}')
 
@@ -63,19 +62,34 @@ def getOrCreateBankLocationBranch(strObj: dict=None, locationID: int=None,  user
 
 	supervisorStr = strObj['fERole'] == "supervisor"
 	helpdeskStr = strObj['fERole'] == "help-desk"
+	engineerStr = strObj['fERole'] == "engineer"
+	custodianStr = strObj['fERole'] == "custodian"
 	print(f'help-desk (strObj): {helpdeskStr}')
 	print(f'supervisor (strObj): {supervisorStr}')
+	print(f'engineer (strObj): {engineerStr}')
+	print(f'custodian (strObj): {custodianStr}')
 	print(f'role is supervisor or helpdesk: {supervisorStr or helpdeskStr}')
-	if supervisorStr or helpdeskStr:
+	if supervisorStr or helpdeskStr or engineerStr or custodianStr:
 		print(f"role: {strObj['fERole']}")
 		print(f'region.supervisor: {region.supervisor}')
 		print(f'region.helpdesk: {region.helpdesk}')
 		if region.supervisor and supervisorStr:
 			print(f'supervisor exists')
-			return 'exist', 'exist', strObj['fERole']
+			return 'region', 'exist', strObj['fERole']
 		elif region.helpdesk and helpdeskStr:
 			print(f'helpdesk exists')
-			return 'exist', 'exist', strObj['fERole']
+			return 'region', 'exist', strObj['fERole']
+		elif engineerStr or custodianStr:
+			if region.helpdesk or region.supervisor:
+				if region.helpdesk and not region.supervisor:
+					print(f'helpdesk alone exists')
+					return 'Supervisor', 'exist', strObj['fERole']
+				elif region.supervisor and not region.helpdesk:
+					print(f'supervisor alone exists')
+					return 'Help-Desk', 'exist', strObj['fERole']
+			elif not region.helpdesk and not region.supervisor:
+				print(f'both helpdesk and supervisor do not exist')
+				return 'Supervisor and Help-Desk', 'exist', strObj['fERole']
 
 	bank = None
 	print(f'bank provided: {strObj["bankStr"]}')
@@ -86,19 +100,27 @@ def getOrCreateBankLocationBranch(strObj: dict=None, locationID: int=None,  user
 		print(f'bank object: {bank}')
 		print(f'is bank new: {bCreated}')
 
-	print(f'getting or creating location: {strObj["locationStr"]}')
+	print(f'checking, getting or creating location: {strObj["locationStr"]}')
 	print(f'location id: {strObj["locationID"]}')
 	locID = strObj["locationID"]
 	if locationID: locID = locationID
 	location = None
-	if locID:
-		location = Location.objects.filter(
-			id=locID,
-			# location=strObj['locationStr'],
-			# state=state,
-			## region=region,
-		)
-	print(f'searched for location object and got: {not not location}')
+	if locID: location = Location.objects.filter(id=locID)
+
+	engineerStr = strObj['fERole'] == "engineer"
+	print(f'engineer (strObj): {engineerStr}')
+	locationCheck = Location.objects.filter(
+		location=strObj['locationStr'],
+		state=state, region=region,
+	).first()
+	print(f'locationCheck: {locationCheck}')
+	locationEngineer = Engineer.objects.filter(location=locationCheck)
+	print(f'locationEngineer: {locationEngineer}')
+	if engineerStr and locationEngineer:
+		print(f'engineer exists')
+		return 'location', 'exist', strObj['fERole']
+
+	print(f'searched for location with ID: {locID} object and got: {not not location}')
 	if location:
 		print(f'found: {location.first().location}')
 		location = location.first()
@@ -152,6 +174,12 @@ def getOrCreateBankLocationBranch(strObj: dict=None, locationID: int=None,  user
 			else:
 				print(f'no supervisor found for {region.name} region')
 				print('so supervisor notifications to assign an enineer to new location not triggered')
+	# engineerStr = strObj['fERole'] == "engineer"
+	# print(f'engineer (strObj): {engineerStr}')
+	# locationEngineer = Engineer.objects.filter(location=location)
+	# if engineerStr and locationEngineer:
+	# 	print(f'helpdesk exists')
+	# 	return 'exist', 'exist', strObj['fERole']
 	print(f'checking for user: {user.first_name if user else "User not found"}, {user.role if user else "User not found"}')
 	print(f'checking for branch: {strObj["branchStr"]}')
 	if user and strObj['branchStr']:
@@ -190,8 +218,6 @@ def getOrCreateBankLocationBranch(strObj: dict=None, locationID: int=None,  user
 			custodianSerializer.save()
 			print('custodian saved successfully')
 			print(f'custodian object id: {custodianSerializer.data["id"]}')
-			# return Response({'msg': 'Account Created'}, status=status.HTTP_201_CREATED)
-			# return Response(UserReadSerializer(user).data, status=status.HTTP_201_CREATED)
 		else:
 			print(f'custodian error: {custodianSerializer.errors}')
 			print(f'custodian error msgs: {custodianSerializer.error_messages}')
@@ -239,19 +265,30 @@ def users(request, pk=None):
 			'branchStr': None if request.data.get('branch') in ['', 'null']  else request.data['branch'],
 			'fERole': data['role'],
 		}
+		print()
 		print(f'requestObject: {requestObject}')
 		region, location, _ = getOrCreateBankLocationBranch(
 						strObj=requestObject)
 		print(f'region (back in user fxn): {region}')
 		print(f'location (back in user fxn): {location}')
-		# print(f'length: {len(location)}')
-		data['location'] = location.id
-		print(f'final data: {data}')
-		# time.sleep(2)
+		subStr = None
 		if location == 'exist':
-			exist = {'msg': f'{_} for this region already exists'}
-			print(f'response to exist: {exist}')
-			return Response(exist, status=status.HTTP_200_OK)
+			if _ == 'supervisor' or _ == 'help-desk':
+				subStr = f'{_.title()} account for this {region} already exists'
+			elif _ == 'engineer' or _ == 'custodian':
+				if region == 'location':
+					subStr = f'{_.title()} account for this {region} already exists'
+				else:
+					subStr = f'{region} for this region does not exists. Create one before creating {_.title()} account'
+			msg = {
+					'msg': f'{subStr}',
+					'color': 'red'
+				}
+			print(f'response to exist: {msg}')
+			return Response(msg, status=status.HTTP_200_OK)
+		data['location'] = location.id
+		print()
+		print(f'final data: {data}')
 		serializedUser = UserCreateSerializer(data=data)
 		print(f'is serializedUser valid:', serializedUser.is_valid())
 		if serializedUser.is_valid():
@@ -285,7 +322,9 @@ def users(request, pk=None):
 					print(f'user: {user}')
 					print(f'user id: {user.id}')
 					print(f'user role: {user.role}')
-				return Response({'msg': 'Account Created'}, status=status.HTTP_201_CREATED)
+				msg = {'msg': 'Account Created', 'color': 'green'}
+				print(f'response to exist: {msg}')
+				return Response(msg, status=status.HTTP_201_CREATED)
 			elif role == 'custodian':
 				print(f''.rjust(50, '#'))
 				print(f'getting or creating location and branch objects again for custodian')
@@ -299,7 +338,9 @@ def users(request, pk=None):
 				print(f'passed branch id for custodian object creation: {branch.id}')
 				print('custodian saved successfully')
 				print(f'user object id: {user.id}')
-				return Response({'msg': 'Account Created'}, status=status.HTTP_201_CREATED)
+				msg = {'msg': 'Account Created', 'color': 'green'}
+				print(f'response to exist: {msg}')
+				return Response(msg, status=status.HTTP_201_CREATED)
 			# return Response(serializedUser.data, status=status.HTTP_201_CREATED)
 		print(f'not a custodian but staff with the role of {request.data["role"]} expert')
 		print(f'user error: {serializedUser.errors}')
@@ -573,7 +614,7 @@ def approvedDetailsChange(request, pk=None, type=None):
 		# create and use a serializer here to send data to frontend!
 		serializedRequests = UpdateLocationAndBranchNotificationSerializer(
 			instance=requestObject,
-            many=True,
+			many=True,
 		).data
 		# print(f'serializedRequests: {serializedRequests}')
 		############################################################
@@ -603,15 +644,15 @@ def totalApprovedDetailsChange(request, pk=None):
 
 @api_view(['GET'])
 def regionEngineers(request, pk=None):
-    # this function goes ahead to get a list of engineers in a specific region
-    region = Region.objects.get(
-        supervisor=User.objects.get(pk=pk)
-        )
-    print(f'region: {region.name}')
-    engineers = User.objects.filter(region=region, role='engineer')
-    print(f'engineers: {[f"name: {engineer.first_name} and id: {engineer.id}" for engineer in engineers]}')
-    serializedEngineers = UserSummarizedDetailsSerializer(instance=engineers, many=True)
-    return Response(serializedEngineers.data, status=status.HTTP_200_OK)
+	# this function goes ahead to get a list of engineers in a specific region
+	region = Region.objects.get(
+		supervisor=User.objects.get(pk=pk)
+		)
+	print(f'region: {region.name}')
+	engineers = User.objects.filter(region=region, role='engineer')
+	print(f'engineers: {[f"name: {engineer.first_name} and id: {engineer.id}" for engineer in engineers]}')
+	serializedEngineers = UserSummarizedDetailsSerializer(instance=engineers, many=True)
+	return Response(serializedEngineers.data, status=status.HTTP_200_OK)
 
 @api_view(['GET', 'PATCH'])
 def assignEngineerToLocation(request, pk=None, type=None):
@@ -643,7 +684,7 @@ def assignEngineerToLocation(request, pk=None, type=None):
 			print(f'check engineer: {Engineer.objects.filter(location=newLocation)}')
 			assignedEngineer, newEngineerObj = Engineer.objects.get_or_create(
 				engineer=engineer,
-                location=newLocation,
+				location=newLocation,
 			)
 			print(f'newEngineerObj: {newEngineerObj}')
 			print(f'assignedEngineer obj: {assignedEngineer}')
@@ -653,9 +694,9 @@ def assignEngineerToLocation(request, pk=None, type=None):
 				branch.branch_engineer = assignedEngineer
 				branch.save()
 				print(f'branch engineer (after): {branch.branch_engineer}')
-				notificationStatus = EngineerAssignmentNotificaion.objects.get(
+				notificationStatus = EngineerAssignmentNotificaion.objects.filter(
 					location=newLocation
-				)
+				).first()
 				print(f'notification: {notificationStatus}')
 				print(f'notification status: {notificationStatus.status}')
 				notificationStatus.status = False
@@ -708,10 +749,10 @@ def totalAssignEngineerToLocation(request, pk=None):
 
 @api_view(['GET'])
 def getAllUsers(request, pk=None):
-    print(f'pk: {pk}')
-    users = User.objects.all()
-    print(f'len users: {len(users)}')
-    print(f'ids: {[user.id for user in users]}')
-    serializedUsers = AllUsersSerializer(instance=users, many=True).data
-    print(f'len serializedUsers: {len(serializedUsers)}')
-    return Response(serializedUsers, status=status.HTTP_200_OK)
+	print(f'pk: {pk}')
+	users = User.objects.all()
+	print(f'len users: {len(users)}')
+	print(f'ids: {[user.id for user in users]}')
+	serializedUsers = AllUsersSerializer(instance=users, many=True).data
+	print(f'len serializedUsers: {len(serializedUsers)}')
+	return Response(serializedUsers, status=status.HTTP_200_OK)
