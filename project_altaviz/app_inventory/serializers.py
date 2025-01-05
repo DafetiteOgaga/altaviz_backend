@@ -20,6 +20,9 @@ class ComponentSerializer(serializers.ModelSerializer):
 	class Meta:
 		model = Component
 		fields = ['name', 'quantity',]
+	def create(self, validated_data):
+		action = self.context.get('action', False)
+		return Component.objects.create(**validated_data, action=action)
 
 class PartNameSerializer(serializers.ModelSerializer):
 	class Meta:
@@ -33,11 +36,9 @@ class PartSerializer(serializers.ModelSerializer):
 	class Meta:
 		model = Part
 		fields = ['name', 'quantity',]
-
-# class RequestPartSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = RequestPart
-#         fields = '__all__'
+	def create(self, validated_data):
+		action = self.context.get('action', False)
+		return Part.objects.create(**validated_data, action=action)
 
 class RequestComponentCreateSerializer(serializers.ModelSerializer):
 	name = serializers.SlugRelatedField(
@@ -106,6 +107,7 @@ class UnconfirmedPartCreateSerializer(serializers.ModelSerializer):
 
 class UnconfirmedPartSerializer(serializers.ModelSerializer):
 	user = UserMiniDetailsSerializer(read_only=True)
+	name = PartNameSerializer()
 	approved_by = UserReadHandlersSerializer(required=False, allow_null=True)
 	class Meta:
 		model = UnconfirmedPart

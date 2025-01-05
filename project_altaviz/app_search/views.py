@@ -13,6 +13,7 @@ from django.utils.dateparse import parse_datetime
 from django.utils import timezone
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
+from types import SimpleNamespace
 
 
 # Create your views here.
@@ -480,10 +481,27 @@ def queryDB(request):
 	if queryType == 'region':
 		resultCount = Region.objects.filter(name=queryText).first()
 		if resultCount:
+			print(f'region: {resultCount.name}')
 			if qrole == 'help desk':
 				resultCount = resultCount.helpdesk
 			elif qrole == 'supervisor':
 				resultCount = resultCount.supervisor
+			elif qrole == 'engineer' or qrole == 'custodian':
+				print(f'region supervisor: {resultCount.supervisor}')
+				print(f'region helpdesk: {resultCount.helpdesk}')
+				regionSupervisor = resultCount.supervisor
+				regionHelpdesk = resultCount.helpdesk
+				if regionSupervisor or regionHelpdesk:
+					if regionSupervisor and regionHelpdesk: resultCount = 0
+					elif regionSupervisor and not regionHelpdesk: resultCount = 1
+					elif not regionSupervisor and regionHelpdesk: resultCount = 2
+					print(f'{regionSupervisor} and {regionHelpdesk}')
+					if regionSupervisor and regionHelpdesk: print(f'{regionSupervisor.id} and {regionHelpdesk.id}')
+					# resultCount = regionSupervisor.id + regionHelpdesk.id
+				else: resultCount = 3
+				print(f'resultCount (inner): {resultCount}')
+				resultCount = SimpleNamespace(id=resultCount) # used for dot notation access
+				print(f'resultCount (inner): {resultCount}')
 		print(f'user: {resultCount}')
 		resultCount = int(resultCount.id) if resultCount is not None else 0
 	if queryType == 'email':
@@ -502,7 +520,11 @@ def queryDB(request):
 			resultCount = int(bool(bankInState))
 		# resultCount = Bank.objects.filter(name=queryText).count()
 	if queryType == 'newLocation':
-		location = Location.objects.filter(location=queryText)
+		location = Location.objects.filter(
+			location=queryText,
+			state__name=queryState, region__name=queryRegion,
+		)
+		# location = Location.objects.filter(location=queryText)
 		resultCount = int(bool(list(location)))
 		print(f'result count:{resultCount}')
 		# if location:
