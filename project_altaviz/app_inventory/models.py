@@ -63,17 +63,18 @@ class Part(models.Model):
 	def save(self, *args, **kwargs):
 		if not self.pk: # Check if a component with the same name exists
 			existing_part = Part.objects.filter(name=self.name).first()
-			if self.action:
-				print(f'action is true: removing {self.quantity} from {existing_part.quantity}')
-				existing_part.quantity = F('quantity') - self.quantity
-			else:
-				print(f'action is false: adding {self.quantity} to {existing_part.quantity}')
-				existing_part.quantity = F('quantity') + self.quantity
-			# if existing_part:
-			# 	# Update the quantity of the existing component
-			# 	existing_part.quantity = F('quantity') + self.quantity
-			existing_part.save(update_fields=["quantity"])
-			return  # Prevent saving a new instance
+			if existing_part:
+				if self.action:
+					print(f'action is true: removing {self.quantity} from {existing_part.quantity}')
+					existing_part.quantity = F('quantity') - self.quantity
+				else:
+					print(f'action is false: adding {self.quantity} to {existing_part.quantity}')
+					existing_part.quantity = F('quantity') + self.quantity
+				# if existing_part:
+				# 	# Update the quantity of the existing component
+				# 	existing_part.quantity = F('quantity') + self.quantity
+				existing_part.save(update_fields=["quantity"])
+				return  # Prevent saving a new instance
 
 		# If no existing component, proceed with saving the new instance
 		super().save(*args, **kwargs)
