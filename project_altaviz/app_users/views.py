@@ -512,12 +512,12 @@ def userDetaileUpdate(request, pk=None):
 			# status=True
 		).first()
 		print(f'previousRequest id:', previousRequest.id)
-		previousRequest.newRegion = request.data.get('region') if request.dada.get('region') not in ['', 'null', 'undefined'] else None
-		previousRequest.newState = request.data.get('state') if request.dada.get('state') not in ['', 'null', 'undefined'] else None
-		previousRequest.newBank = request.data.get('bank') if request.dada.get('bank') not in ['', 'null', 'undefined'] else None
-		previousRequest.newLocation = request.data.get('location') if request.dada.get('location') not in ['', 'null', 'undefined'] else None
+		previousRequest.newRegion = request.data.get('region') if request.data.get('region') not in ['', 'null', 'undefined'] else None
+		previousRequest.newState = request.data.get('state') if request.data.get('state') not in ['', 'null', 'undefined'] else None
+		previousRequest.newBank = request.data.get('bank') if request.data.get('bank') not in ['', 'null', 'undefined'] else None
+		previousRequest.newLocation = request.data.get('location') if request.data.get('location') not in ['', 'null', 'undefined'] else None
 		###### continue here >>>>>>>>>>>>>>>>>>>>>
-		previousRequest.newBranch = request.data.get('branch') if request.dada.get('branch') not in ['', 'null', 'undefined'] else None
+		previousRequest.newBranch = request.data.get('branch') if request.data.get('branch') not in ['', 'null', 'undefined'] else None
 		previousRequest.save()
 		print('start send_notification ##########')
 		send_notification(message='account update request-hr')
