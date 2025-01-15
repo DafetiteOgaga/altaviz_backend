@@ -345,7 +345,7 @@ def deleteFault(request, pk=None):
 	send_notification(message=f'fault deleted-{fault.logged_by.branch.region.name}')
 	print('end send_notification ##########')
 	print('##################### end delete faults ###########################')
-	return Response({'msg': 'deleted successfully'}, status=status.HTTP_200_OK)
+	return Response({'msg': 'Fault deleted successfully'}, status=status.HTTP_200_OK)
 
 # ########################################
 # @api_view(['GET',])
