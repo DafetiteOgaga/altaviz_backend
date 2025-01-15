@@ -46,7 +46,7 @@ def sendEmail(user, context, subject):
             },
         ],
     }
-    print(f'email_data: {email_data}')
+    # print(f'email_data: {email_data}')
 
     # Request headers
     headers = {
