@@ -53,15 +53,44 @@ def logoutView(request):
 		logout(request)
 		return Response({"message": "Logout from backend successful"}, status=status.HTTP_200_OK)
 
-@api_view(['GET'])
+@api_view(['POST'])
+def changePassword(request, pk=None):
+	if request.method == 'POST':
+		print(f'change password payload: {request.data}')
+		email = request.data.get('email')
+		password = request.data.get('oldPassword')
+		new_password = request.data.get('password')
+		user = User.objects.filter(email=email).first()
+		print('email:', email)
+		print('password:', password)
+		print('New password:', new_password)
+		print(f'user: {user}')
+		if user:
+			user = authenticate(email=email, password=password)
+			print(f'auth user: {user}')
+			# return Response({'msg': 'change password successful'}, status=status.HTTP_200_OK)
+			if user:
+				user.set_password(new_password)
+				user.save()
+				return Response({"msg": "Password changed successfully"}, status=status.HTTP_200_OK)
+			else:
+				return Response({"msg": "Invalid credentials"}, status=status.HTTP_404_NOT_FOUND)
+		else:
+			return Response({"msg": "Account does not exist"}, status=status.HTTP_404_NOT_FOUND)
+
+@api_view(['GET', 'POST'])
 def checkAuth(request):
 	print(f'authentication check payload: {request.data}')
-	if request.user.is_authenticated:
-		user = request.user
-		print(f'user: {user}')
-		serializer = UserReadSerializer(user)
-		# print(f'user serializer: {serializer.data}')
-		return Response(serializer.data, status=status.HTTP_200_OK)
-		# return Response({"isAuthenticated": True}, status=status.HTTP_200_OK)
+	if request.method == 'POST':
+		print(f'beacon received: {request.data}')
+		return Response({"beacon": "received"}, status=status.HTTP_200_OK)
 	else:
-		return Response({"isAuthenticated": False}, status=status.HTTP_401_UNAUTHORIZED)
+		if request.user.is_authenticated:
+			user = request.user
+			print(f'user: {user}')
+			serializer = UserReadSerializer(user)
+			# print(f'user serializer: {serializer.data}')
+			return Response(serializer.data, status=status.HTTP_200_OK)
+			# return Response({"isAuthenticated": True}, status=status.HTTP_200_OK)
+		else:
+			return Response({"isAuthenticated": False}, status=status.HTTP_401_UNAUTHORIZED)
