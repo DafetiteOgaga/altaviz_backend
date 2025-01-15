@@ -158,9 +158,9 @@ def custodianPendingFaults(request, pk=None, type=None):
 				print('start send_notification ##########')
 				await sync_to_async(send_notification)(message=f'verify resolve-{region.name}')
 				print('end send_notification ##########')
-				return Response(patchSerializer.data, status=status.HTTP_200_OK)
+				return Response({'msg': 'Confirmation request sent successfully'}, status=status.HTTP_200_OK)
 			else:
-				return Response(patchSerializer.errors, status=status.HTTP_400_BAD_REQUEST)
+				return Response({'msg': f'{patchSerializer.errors}'}, status=status.HTTP_400_BAD_REQUEST)
 		return async_to_sync(patchData)()
 	elif request.method == 'GET':
 		async def getData():
@@ -294,11 +294,11 @@ def custodianUnconfirmedResolutions(request, pk=None, type=None):
 				print('start send_notification ##########')
 				await sync_to_async(send_notification)(message=f'deliveries point-{region}')
 				print('end send_notification ##########')
-				return Response(confirmResolution.data, status=status.HTTP_200_OK)
+				return Response({'msg': 'Fault Resolution Confirmed'}, status=status.HTTP_200_OK)
 			# print(f'Error saving confirmation resolution: {confirmResolution.errors}')
 			print(f'Error saving confirmation resolution: {confirmResolution.errors}')
 			print('##################### end confirmation ###########################')
-			return Response(confirmResolution.errors, status=status.HTTP_400_BAD_REQUEST)
+			return Response({'msg': f'{confirmResolution.errors}'}, status=status.HTTP_400_BAD_REQUEST)
 		return async_to_sync(patchDataFxn)()
 	elif request.method == 'GET':
 		async def getData():
@@ -370,7 +370,7 @@ def deleteFault(request, pk=None):
 		try:
 			fault = await sync_to_async(Fault.objects.get)(pk=pk)
 		except:
-			return Response({'error': 'fault not found'}, status=status.HTTP_404_NOT_FOUND)
+			return Response({'msg': 'fault not found'}, status=status.HTTP_404_NOT_FOUND)
 		print(f'faultID: {fault.id}')
 		await sync_to_async(fault.delete)()
 		print(f'done ✅✅✅')
@@ -381,7 +381,7 @@ def deleteFault(request, pk=None):
 		await sync_to_async(send_notification)(message=f'fault deleted-{region}')
 		print('end send_notification ##########')
 		print('##################### end delete faults ###########################')
-		return Response({'msg': 'deleted successfully'}, status=status.HTTP_200_OK)
+		return Response({'msg': 'Fault deleted successfully'}, status=status.HTTP_200_OK)
 	return async_to_sync(deleteData)()
 
 @api_view(['GET'])
