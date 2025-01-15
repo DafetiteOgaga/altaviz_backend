@@ -310,12 +310,12 @@ def unapprovedPart(request, pk=None, type=None):
 					print(f'ptSerializer saved #################')
 				else:
 					print(f'ptSerializer error: {ptSerializer.errors}')
-					return Response({'error': 'Could not complete.'}, status=status.HTTP_201_CREATED)
+					return Response({'msg': 'Could not complete.'}, status=status.HTTP_201_CREATED)
 			print('start send_notification ##########')
 			await sync_to_async(send_notification)(message='fixed part ready-hr')
 			print('end send_notification ##########')
 			print('################# end unapprovedPart #################')
-			return Response({'received': 'Awaits approval.'}, status=status.HTTP_201_CREATED)
+			return Response({'received': 'Part(s) Received and awaits approval.'}, status=status.HTTP_201_CREATED)
 		return async_to_sync(postData)()
 	elif request.method == 'PATCH':
 		# ###############################################################
@@ -359,12 +359,12 @@ def unapprovedPart(request, pk=None, type=None):
 					print(f'saved: {inventoryUpdateserializer.data}')
 				else:
 					print(f'serializer.errors: {inventoryUpdateserializer.errors}')
-					return Response(inventoryUpdateserializer.errors, status=status.HTTP_400_BAD_REQUEST)
+					return Response({'msg': f'{inventoryUpdateserializer.errors}'}, status=status.HTTP_400_BAD_REQUEST)
 			reaponse = 'approved' if part.approved else 'rejected'
 			print('start send_notification ##########')
 			await sync_to_async(send_notification)(message='approve or reject fixed parts-hr')
 			print('end send_notification ##########')
-			return Response({'msg': reaponse}, status=status.HTTP_200_OK)
+			return Response({'msg': f'Part {reaponse}'}, status=status.HTTP_200_OK)
 		return async_to_sync(patchData)()
 	elif request.method == 'GET':
 		print('################# user unapprovedPart noti #################')
@@ -416,9 +416,9 @@ def deleteUnapprovedPart(request, pk=None):
 			item = await sync_to_async(UnconfirmedPart.objects.get)(pk=pk)
 			print(f'deleting ... : {item}')
 			await sync_to_async(item.delete)()
-			print(f'done ✅✅✅')
+			print(f'done ✅✅')
 			# send_notification(message='fixed part deleted')
-			return Response({'msg': 'Posted Part deleted successfully.'}, status=status.HTTP_204_NO_CONTENT)
+			return Response({'msg': 'Posted Part withrawn successfully'}, status=status.HTTP_200_OK)
 		except UnconfirmedPart.DoesNotExist:
 			return Response({'msg': 'Part does not exist.'}, status=status.HTTP_404_NOT_FOUND)
 	return async_to_sync(deleteUPart)()
@@ -553,10 +553,12 @@ def requestComponent(request, pk=None, type=None):
 				print('start send_notification ##########')
 				await sync_to_async(send_notification)(message=f'approve/reject component request-{region}')
 				print('end send_notification ##########')
-				return Response({'msg': reaponse}, status=status.HTTP_200_OK)
+				responseType = 'Approved' if request.data.get('approved') else 'Rejected' if request.data.get('rejected') else None
+				return Response({'msg': f'{responseType} {componentRequest.name.name} request'}, status=status.HTTP_200_OK)
+				# return Response({'msg': reaponse}, status=status.HTTP_200_OK)
 				# return Response({'msg': 'Success'}, status=status.HTTP_200_OK)
 			print(f'serializedComponentRequest.error: {serializedComponentRequest.errors}')
-			return Response(serializedComponentRequest.errors, status=status.HTTP_400_BAD_REQUEST)
+			return Response({'msg': f'{serializedComponentRequest.errors}'}, status=status.HTTP_400_BAD_REQUEST)
 		return async_to_sync(patchData)()
 	elif request.method == 'GET':
 		if pk:
@@ -631,7 +633,7 @@ def deleteCompRequest(request, pk=None):
 				'user__region'
 			).get)(pk=pk)
 		except:
-			return Response({'error': 'compRequest not found'}, status=status.HTTP_404_NOT_FOUND)
+			return Response({'msg': 'compRequest not found'}, status=status.HTTP_404_NOT_FOUND)
 		print(f'compRequest: {compRequest}')
 		userRegion = compRequest.user.region.name
 		print(f'userRegion: {userRegion}')
@@ -641,7 +643,7 @@ def deleteCompRequest(request, pk=None):
 		await sync_to_async(send_notification)(message=f'component request deleted-{branchRegion if compRequest.fault else userRegion}')
 		print('end send_notification ##########')
 		print('##################### end delete CompRequest ###########################')
-		return Response({'msg': 'deleted successfully'}, status=status.HTTP_200_OK)
+		return Response({'msg': 'Component Request withrawn successfully'}, status=status.HTTP_200_OK)
 	return async_to_sync(deleteComponentRequest)()
 
 @api_view(['GET',])
@@ -754,9 +756,10 @@ def requestPart(request, pk=None, type=None):
 				print('start send_notification ##########')
 				await sync_to_async(send_notification)(message=f'approve/reject part request-{region}')
 				print('end send_notification ##########')
-				return Response({'msg': 'Success'}, status=status.HTTP_200_OK)
+				responseType = 'Approved' if request.data.get('approved') else 'Rejected' if request.data.get('rejected') else None
+				return Response({'msg': f'{responseType} {partRequest.name.name} request'}, status=status.HTTP_200_OK)
 			print(f'serializedPartRequest.error: {serializedPartRequest.errors}')
-			return Response(serializedPartRequest.errors, status=status.HTTP_400_BAD_REQUEST)
+			return Response({'msg': f'{serializedPartRequest.errors}'}, status=status.HTTP_400_BAD_REQUEST)
 		return async_to_sync(patchPartRequests)()
 	elif request.method == 'GET':
 		if pk:
@@ -851,7 +854,7 @@ def deletePartRequest(request, pk=None):
 				'user__region'
 			).get)(pk=pk)
 		except:
-			return Response({'error': 'partRequest not found'}, status=status.HTTP_404_NOT_FOUND)
+			return Response({'msg': 'partRequest not found'}, status=status.HTTP_404_NOT_FOUND)
 		print(f'partRequest: {partRequest}')
 		userRegion = partRequest.user.region.name
 		print(f'userRegion: {userRegion}')
@@ -861,7 +864,7 @@ def deletePartRequest(request, pk=None):
 		await sync_to_async(send_notification)(message=f'part request deleted-{branchRegion if partRequest.fault else userRegion}')
 		print('end send_notification ##########')
 		print('##################### end delete partRequest ###########################')
-		return Response({'msg': 'deleted successfully'}, status=status.HTTP_200_OK)
+		return Response({'msg': 'Part Request withrawn successfully'}, status=status.HTTP_200_OK)
 	return async_to_sync(deletePartzRequest)()
 
 ###################################################
@@ -987,7 +990,7 @@ def regionUserRequests(request, pk=None, type=None):
 		paginated_allFaultsData = userPaginator.paginate_queryset(allEngineersData, request)
 		print('##################### end engineerUnconfirmedFaults ###########################')
 		return userPaginator.get_paginated_response(paginated_allFaultsData)
-	return Response({'message': 'No faults found for any engineers'}, status=status.HTTP_200_OK)
+	return Response({'message': 'No faults found for any engineer'}, status=status.HTTP_200_OK)
 
 @api_view(['GET',])
 def totalRegionUserRequests(request, pk=None):
@@ -1115,7 +1118,7 @@ def unconfirmedRegionResolutions(request, pk=None, type=None):
 		userPaginator.page_size = 10  # Number of items per page
 		paginated_allFaultsData = userPaginator.paginate_queryset(allEngineersData, request)
 		return userPaginator.get_paginated_response(paginated_allFaultsData)
-	return Response({'message': 'No faults found for any engineers'}, status=status.HTTP_200_OK)
+	return Response({'message': 'No faults found for any engineer'}, status=status.HTTP_200_OK)
 
 @api_view(['GET',])
 def totalUnconfirmedRegionResolutions(request, pk=None):
@@ -1239,11 +1242,12 @@ def requestStatus(request, pk=None):
 				print('start send_notification ##########')
 				await sync_to_async(send_notification)(message=f'approve/reject components and/or parts request-{region.name}')
 				print('end send_notification ##########')
-				return Response({'msg': 'success'}, status=status.HTTP_200_OK)
+				responseType = 'Approved' if 'approved' in requestList else 'Rejected'
+				return Response({'msg': f'All Requests {responseType}'}, status=status.HTTP_200_OK)
 			else:
 				return Response({'msg': 'Request has initially been responded to'}, status=status.HTTP_200_OK)
 		return async_to_sync(patchRequestStatus)()
-	return Response({'wrong method used'}, status=status.HTTP_200_OK)
+	return Response({'msg': 'wrong method used'}, status=status.HTTP_200_OK)
 
 ###################################################
 @api_view(['GET'])
@@ -1364,7 +1368,7 @@ def faultsWithRequests(request, pk=None):
 		paginated_faults = paginator.paginate_queryset(allFaultsData, request)
 		return paginator.get_paginated_response(paginated_faults)
 
-	return Response({'message': 'No faults found for any engineers'}, status=status.HTTP_200_OK)
+	return Response({'message': 'No faults found for any engineer'}, status=status.HTTP_200_OK)
 
 @api_view(['GET',])
 def totalFaultsWithRequests(request, pk=None):
@@ -1564,7 +1568,7 @@ def allUserRequests(request, pk=None, type=None):
 		paginated_allFaultsData = userPaginator.paginate_queryset(allEngineersData, request)
 		print('##################### end engineerUnconfirmedFaults ###########################')
 		return userPaginator.get_paginated_response(paginated_allFaultsData)
-	return Response({'message': 'No faults found for any engineers'}, status=status.HTTP_200_OK)
+	return Response({'message': 'No faults found for any engineer'}, status=status.HTTP_200_OK)
 
 @api_view(['GET',])
 def totalAllUserRequests(request, pk=None):
