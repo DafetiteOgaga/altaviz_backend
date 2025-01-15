@@ -90,5 +90,5 @@ def chatUser(request, cpk=None, upk=None):
 		# 	return Response({'error': 'Chat not found'}, status=status.HTTP_404_NOT_FOUND)
 
 		# chats.delete()
-		# return Response({'message': 'Chat deleted successfully'}, status=status.HTTP_204_NO_CONTENT)
+		# return Response({'message': 'Chat deleted successfully'}, status=status.HTTP_200_OK)
 		pass
