@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'app_email',		# <- added startapp here
     'app_chatroom',		# <- added startapp here
     'app_sse_notification',		# <- added startapp here
     'app_deliveries',		# <- added startapp here
@@ -90,7 +91,7 @@ ROOT_URLCONF = 'project_altaviz.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR/'app_email/emailTemplates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -281,3 +282,10 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 #         firebase_admin.initialize_app(cred, {
 #             "databaseURL": "https://altaviz-notifications-default-rtdb.firebaseio.com/"
 #         })
+
+# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+# EMAIL_HOST = 'smtp.gmail.com'
+# EMAIL_PORT = 587
+# EMAIL_USE_TLS = True
+# EMAIL_HOST_USER = 'ogagadafetite@gmail.com'
+# EMAIL_HOST_PASSWORD = 'bsea decv wmcs rgvz'  # Use the App Password here

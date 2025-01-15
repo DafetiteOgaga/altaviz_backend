@@ -16,6 +16,7 @@ from rest_framework.pagination import PageNumberPagination
 import os, time
 from django.conf import settings
 from app_sse_notification.firebase_utils import send_notification
+from app_email.views import sendEmailMethod
 
 def updateDetailesFxn(requestData, user):
 	############################ after admin approval ############################
@@ -120,7 +121,7 @@ def getOrCreateBankLocationBranch(strObj: dict=None, locationID: int=None,  user
 		print(f'engineer exists')
 		return 'location', 'exist', strObj['fERole']
 
-	print(f'searched for location with ID: {locID} object and got: {not not location}')
+	print(f'searched for location with ID: {locID} object and found one: {not not location}')
 	if location:
 		print(f'found: {location.first().location}')
 		location = location.first()
@@ -287,6 +288,9 @@ def users(request, pk=None):
 			print(f'response to exist: {msg}')
 			return Response(msg, status=status.HTTP_200_OK)
 		data['location'] = location.id
+		print('setting a default password ...')
+		data['password'] = 'password123'
+		print(f'set default password: {data["password"]}')
 		print()
 		print(f'final data: {data}')
 		serializedUser = UserCreateSerializer(data=data)
@@ -322,8 +326,17 @@ def users(request, pk=None):
 					print(f'user: {user}')
 					print(f'user id: {user.id}')
 					print(f'user role: {user.role}')
-				msg = {'msg': 'Account Created', 'color': 'green'}
-				print(f'response to exist: {msg}')
+				payload = {
+					'subject': 'Welcome to Altaviz Support Limited',
+					'message': f'Welcome to Altaviz Support Limited, {user.first_name.title()} {user.last_name.title()}.\nHere are the details of your newly created Account:\nEmail: {user.email}\nPassword: password123\nRole: {user.role}',
+					'recipient': f'{user.email}',
+					'heading': 'Account Details',
+				}
+				sendEmail = sendEmailMethod(user=user, data=payload)
+				print(f'email sent: {sendEmail}')
+				emailResponse = 'and Email sent to' if sendEmail=='success' else 'but Email not sent to'
+				msg = {'msg': f'Account Created {emailResponse} {user.email.replace(chr(10), "")}', 'color': 'green'}
+				print(f'response: {msg}')
 				return Response(msg, status=status.HTTP_201_CREATED)
 			elif role == 'custodian':
 				print(f''.rjust(50, '#'))
@@ -679,36 +692,40 @@ def assignEngineerToLocation(request, pk=None, type=None):
 			print(f'region: {region}')
 			engineer = User.objects.get(pk=engineerID)
 			print(f'engineer: {engineer}')
-			branch = Branch.objects.filter(location=newLocation)
+			branch = Branch.objects.filter(location=newLocation).first()
 			print(f'check branch: {branch}')
-			print(f'check engineer: {Engineer.objects.filter(location=newLocation)}')
-			assignedEngineer, newEngineerObj = Engineer.objects.get_or_create(
-				engineer=engineer,
-				location=newLocation,
-			)
-			print(f'newEngineerObj: {newEngineerObj}')
-			print(f'assignedEngineer obj: {assignedEngineer}')
-			if branch:
-				branch = branch[0]
-				print(f'branch engineer (before): {branch.branch_engineer}')
-				branch.branch_engineer = assignedEngineer
-				branch.save()
-				print(f'branch engineer (after): {branch.branch_engineer}')
-				notificationStatus = EngineerAssignmentNotificaion.objects.filter(
-					location=newLocation
-				).first()
-				print(f'notification: {notificationStatus}')
-				print(f'notification status: {notificationStatus.status}')
-				notificationStatus.status = False
-				notificationStatus.save()
-				print(f'notification status: {notificationStatus.status}')
-			print('#######################')
-			print()
+			checkEngineer = Engineer.objects.filter(location=newLocation).first()
+			print(f'check engineer: {checkEngineer}')
+			if not checkEngineer:
+				assignedEngineer, newEngineerObj = Engineer.objects.get_or_create(
+					engineer=engineer,
+					location=newLocation,
+				)
+				print(f'newEngineerObj: {newEngineerObj}')
+				print(f'assignedEngineer obj: {assignedEngineer}')
+				if branch:
+					# branch = branch[0]
+					print(f'branch engineer (before): {branch.branch_engineer}')
+					branch.branch_engineer = assignedEngineer
+					branch.save()
+					print(f'branch engineer (after): {branch.branch_engineer}')
+					notificationStatus = EngineerAssignmentNotificaion.objects.filter(
+						location=newLocation
+					).first()
+					print(f'notification: {notificationStatus}')
+					print(f'notification status: {notificationStatus.status}')
+					notificationStatus.status = False
+					notificationStatus.save()
+					print(f'notification status: {notificationStatus.status}')
+				print('#######################')
+				print()
+			else:
+				return Response({'msg': 'Location already assigned to an Engineer'}, status=status.HTTP_200_OK)
 		print(f'region: {region}')
 		print('start send_notification ##########')
-		send_notification(message=f'assigned engineer to new location-{region.name}')
+		send_notification(message=f'assigned engineer to new location-{region}')
 		print('end send_notification ##########')
-		return Response({'msg': 'Success'}, status=status.HTTP_200_OK)
+		return Response({'msg': 'Engineers assignment successful'}, status=status.HTTP_200_OK)
 	elif request.method == 'GET':
 		supervisor = User.objects.get(pk=pk)
 		notifications = EngineerAssignmentNotificaion.objects.filter(

@@ -21,6 +21,7 @@ from django.conf.urls.static import static
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('', include('app_email.urls')),     # For app_email configuration
     path('', include('app_chatroom.urls')),     # For app_chatroom configuration
     path('', include('app_sse_notification.urls')),     # For app_sse_notification configuration
     path('', include('app_deliveries.urls')),     # For app_deliveries configuration
