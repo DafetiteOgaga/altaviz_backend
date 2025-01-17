@@ -12,6 +12,33 @@ from app_location.models import Location
 from app_users.serializers import UserReadSerializer
 from django.contrib.auth import authenticate, login, logout, get_user_model
 User = get_user_model()
+from app_email.views import sendEmailMethod
+from datetime import datetime
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.utils.encoding import force_bytes
+import time
+
+# Generate a unique token
+def passwordResetTokenGenerator(user):
+	token_generator = PasswordResetTokenGenerator()
+	uid = urlsafe_base64_encode(force_bytes(user.pk))  # Encode the user's primary key
+	token = token_generator.make_token(user)          # Generate the token
+	return uid, token
+
+def sendEmailFxn(data, max_retries=5, delay=5):
+	retries = 0
+	while retries < max_retries:
+		sendEmail = sendEmailMethod(user=data['user'], data=data['payload'])
+		if sendEmail != 'error':
+			print(f'sendEmail: {sendEmail}')
+			return sendEmail  # Exit if successful
+		else:
+			print(f'Error sending email, retrying... ({retries + 1}/{max_retries})')
+			retries += 1
+			time.sleep(delay)  # Wait before retrying
+	print("Failed to send email after maximum retries.")
+	return sendEmail
 
 # Create your views here.
 @api_view(['POST'])
@@ -35,17 +62,17 @@ def loginView(request):
 						print(f'custodian: (views) {Custodian.objects.get(custodian=user)}')
 						print(f'custodian.first() (views): {Custodian.objects.first()}')
 					login(request, user)
-					serializer = UserReadSerializer(user)
-					response_data = serializer.data  # Serialized user data
+					serializedData = UserReadSerializer(user).data
+					# response_data = serializer.data  # Serialized user data
 					print(f'user role: 22222222222 {user.role}')
-					return Response(response_data, status=status.HTTP_200_OK)
+					return Response(serializedData, status=status.HTTP_200_OK)
 					# return Response({"message": "Login successful"}, status=status.HTTP_200_OK)
 				else:
 					return Response({"message": "Your account is not active"}, status=status.HTTP_403_FORBIDDEN)
 			else:
-				return Response({"message": "Invalid credentials"}, status=status.HTTP_404_NOT_FOUND)
+				return Response({"message": "Oopsy! Invalid credentials"}, status=status.HTTP_404_NOT_FOUND)
 		else:
-			return Response({"message": "Account does not exist"}, status=status.HTTP_404_NOT_FOUND)
+			return Response({"message": "Oops! Account does not exist"}, status=status.HTTP_404_NOT_FOUND)
 
 @api_view(['POST'])
 def logoutView(request):
@@ -72,11 +99,89 @@ def changePassword(request, pk=None):
 			if user:
 				user.set_password(new_password)
 				user.save()
+				payload = {
+					'subject': 'Password Update',
+					'message': f'''We noticed that you recently updated your password at exactly {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}.\nPls, if this is not you, Kindly reach out to the administrator as soon as possible and report this breach to recover your account.\nHowever, ignore this message if it was you was initiated the password update.''',
+					# 'recipient': f'{user.email}',
+					'heading': 'Password Update Report',
+					'support': 'nowhere', # this should be a link
+				}
+				sendEmailFxn({'user': user, 'payload': payload})
 				return Response({"msg": "Password changed successfully"}, status=status.HTTP_200_OK)
 			else:
 				return Response({"msg": "Invalid credentials"}, status=status.HTTP_404_NOT_FOUND)
 		else:
 			return Response({"msg": "Account does not exist"}, status=status.HTTP_404_NOT_FOUND)
+
+@api_view(['POST'])
+def resetPasswordRequest(request):
+	print(f'forgot password payload: {request.data}')
+	if request.method == 'POST':
+		print(f'forgot password payload: {request.data}')
+		email = request.data.get('email')
+		FRONTENDURL = request.data.get('FEUrl')
+		user = User.objects.filter(email=email).first()
+		print(f'email: {email}')
+		print(f'FRONTENDURL: {FRONTENDURL}')
+		print(f'user: {user}')
+		uid, token = passwordResetTokenGenerator(user)
+		print(f'uid: {uid}\ntoken: {token}')
+		resetLink = f"{FRONTENDURL}/reset-password/{uid}/{token}/"
+		print(f'resetLink: {resetLink}')
+		# return Response({"msg": "Password reset email sent successfully"}, status=status.HTTP_200_OK)
+		if user:
+			payload = {
+				'subject': 'Password Reset',
+				'message': f'''You recently requested for a password reset at exactly {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}.\nPls, if this is not you, Kindly reach out to the administrator as soon as possible and report this breach to recover your account.\nIf it is you, follow the reset link below.\nNote: This link will expire 3hours.''',
+				# 'recipient': f'{user.email}',
+				'heading': 'Request Password Reset',
+				'support': resetLink
+			}
+			sendEmailFxn({'user': user, 'payload': payload})
+			return Response({"msg": "Password Reset Email has been sent to you."}, status=status.HTTP_200_OK)
+		else:
+			print(f'Account does not exist')
+			return Response({"msg": "Account does not exist"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+def resetPasswordDone(request, uid, token):
+	print(f'payload: {request.data}')
+	uid = request.data.get('uid')
+	print(f'uid: {uid}')
+	token = request.data.get('token')
+	print(f'token: {token}')
+	new_password = request.data.get('new_password')
+	print(f'new_password: {new_password}')
+	# return Response({"msg": "Password reset email sent successfully"}, status=status.HTTP_200_OK)
+	try:
+		user_id = urlsafe_base64_decode(uid).decode()  # Decode the user ID
+		print(f'user_id: {user_id}')
+		user = User.objects.get(pk=user_id)           # Retrieve the user
+		print(f'user: {user}')
+		
+		token_generator = PasswordResetTokenGenerator()
+		print(f'token_generator: {token_generator}')
+		if token_generator.check_token(user, token):  # Verify the token
+			print(f'Token is valid')
+			user.set_password(new_password)           # Set the new password
+			user.save()
+			print(f'Password reset successful!')
+			payload = {
+				'subject': 'Password Reset Done',
+				'message': f'''You have successfully reset your password at exactly {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}.\nPls, if this is not you, Kindly reach out to the administrator as soon as possible and report this breach to recover your account.\nHowever, ignore this message if it was you was who initiated the password reset.''',
+				# 'recipient': f'{user.email}',
+				'heading': 'Password Reset Successful',
+				'support': 'nowhere'
+			}
+			sendEmailFxn({'user': user, 'payload': payload})
+			return Response({"msg": "Password Reset successful!"}, status=status.HTTP_200_OK)
+		else:
+			print('Invalid or expired token.')
+			return Response({"msg": "Invalid or expired token."}, status=status.HTTP_400_BAD_REQUEST)
+	except (User.DoesNotExist, ValueError, TypeError):
+		print(f'Invalid request.')
+		return Response({"msg": "Invalid request."}, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['GET', 'POST'])
 def checkAuth(request):
