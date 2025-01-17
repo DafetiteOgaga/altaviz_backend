@@ -14,4 +14,5 @@ urlpatterns = [
 	path('newLocation-check/', view=views.queryDB, name='queryDB'),
 	path('newBranch-check/', view=views.queryDB, name='queryDB'),
 	path('region-check/', view=views.queryDB, name='queryDB'),
+	# path('email-existence/<str:email>/',views.verifyEmailExistence, name='verifyEmailExistence'),
 ]
