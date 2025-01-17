@@ -46,7 +46,7 @@ def sendEmail(user, context, subject):
             },
         ],
     }
-    # print(f'email_data: {email_data}')
+    # print(f'email_data: {email_data}') # do not uncomment this line, it will break the code in production
 
     # Request headers
     headers = {
@@ -73,6 +73,8 @@ def sendEmailToClient(request=None, pk=None):
             print(f'heading: {heading}')
             message = request.data.get('message', 'No Message')
             print(f'message: {message}')
+            support = request.data.get('support', 'No Link')
+            print(f'support: {support}')
         except Exception as e:
                 print(f'Oopsy! Error: {str(e)}')
                 return JsonResponse({'success': False, 'message': str(e)}, status=500)
@@ -85,7 +87,7 @@ def sendEmailToClient(request=None, pk=None):
             'user': user,
             'heading': heading,
             'message': message,
-            'support': 'nowhere' # this should be a link
+            'support': support,
         }
 
         response = sendEmail(user, context, subject)
@@ -107,6 +109,8 @@ def sendEmailMethod(user=None, data=None):
     print(f'heading: {heading}')
     message = data.get('message', 'No Message')
     print(f'message: {message}')
+    support = data.get('support', 'No Link')
+    print(f'support: {support}')
 
     print(f'user: {user}')
 
@@ -115,7 +119,7 @@ def sendEmailMethod(user=None, data=None):
         'user': user,
         'heading': heading,
         'message': message,
-        'support': 'nowhere' # this should be a link
+        'support': support,
     }
 
     response = sendEmail(user, context, subject)
@@ -126,5 +130,5 @@ def sendEmailMethod(user=None, data=None):
         return 'success'
     else:
         # Handle failure
-        print(f'Failed to send email: {response.status_code} - {response.text}')
+        print(f'Failed to send email: {response.status_code}')
         return 'error'
