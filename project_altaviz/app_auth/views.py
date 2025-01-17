@@ -101,10 +101,10 @@ def changePassword(request, pk=None):
 				user.save()
 				payload = {
 					'subject': 'Password Update',
-					'message': f'''We noticed that you recently updated your password at exactly {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}.\nPls, if this is not you, Kindly reach out to the administrator as soon as possible and report this breach to recover your account.\nHowever, ignore this message if it was you was initiated the password update.''',
+					'message': f'''We noticed that you recently updated your password at exactly {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}.\nPls, if this is not you, Kindly reach out to our administrator as soon as possible and report this breach to recover your account.\nHowever, ignore this message if it was you was initiated the password update.''',
 					# 'recipient': f'{user.email}',
 					'heading': 'Password Update Report',
-					'support': 'nowhere', # this should be a link
+					'support': None, # this should be a link
 				}
 				sendEmailFxn({'user': user, 'payload': payload})
 				return Response({"msg": "Password changed successfully"}, status=status.HTTP_200_OK)
@@ -132,13 +132,13 @@ def resetPasswordRequest(request):
 			print(f'resetLink: {resetLink}')
 			payload = {
 				'subject': 'Password Reset',
-				'message': f'''You recently requested for a password reset at exactly {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}.\nPls, if this is not you, Kindly reach out to the administrator as soon as possible and report this breach to recover your account.\nIf it is you, follow the reset link below.\nNote: This link will expire 3hours.''',
+				'message': f'''You recently requested for a password reset at exactly {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}.\nPls, if this is not you, Kindly reach out to our administrator as soon as possible and report this breach to recover your account.\nIf it is you, follow the reset link below.\nNote: This link will expire 3hours.''',
 				# 'recipient': f'{user.email}',
 				'heading': 'Request Password Reset',
 				'support': resetLink
 			}
 			sendEmailFxn({'user': user, 'payload': payload})
-			return Response({"msg": "Password Reset Email has been sent to you."}, status=status.HTTP_200_OK)
+			return Response({"msg": "Password Reset link has been sent to your Email. Check your spam too."}, status=status.HTTP_200_OK)
 		else:
 			print(f'Account does not exist')
 			return Response({"msg": "Account does not exist"}, status=status.HTTP_400_BAD_REQUEST)
@@ -169,10 +169,10 @@ def resetPasswordDone(request, uid, token):
 			print(f'Password reset successful!')
 			payload = {
 				'subject': 'Password Reset Done',
-				'message': f'''You have successfully reset your password at exactly {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}.\nPls, if this is not you, Kindly reach out to the administrator as soon as possible and report this breach to recover your account.\nHowever, ignore this message if it was you was who initiated the password reset.''',
+				'message': f'''You have successfully reset your password at exactly {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}.\nPls, if this is not you, Kindly reach out to our administrator as soon as possible and report this breach to recover your account.\nHowever, ignore this message if it was you was who initiated the password reset.''',
 				# 'recipient': f'{user.email}',
 				'heading': 'Password Reset Successful',
-				'support': 'nowhere'
+				'support': None, # this should be a link
 			}
 			sendEmailFxn({'user': user, 'payload': payload})
 			return Response({"msg": "Password Reset successful!"}, status=status.HTTP_200_OK)

@@ -23,6 +23,9 @@ except ImportError as e:
 
 def sendEmail(user, context, subject):
     # Render HTML content with the context
+    context['message'] = f'{context["message"]}\n\n'
+    context['reachoutText'] = f'If you have any questions or need assistance, feel free to reach out to our support team.\n\n'
+    context['linkText'] = 'Click here\n\n'
     email_body = render_to_string('baseEmail.html', context)
 
     # Encode the logo image (if you have one)
