@@ -16,7 +16,9 @@
 			<p>Hello {{ user.first_name|capfirst }},</p>
 			<p style="white-space: pre;">{{ message }}</p>
 			<p>If you have any questions or need assistance, feel free to reach out to our support team.</p>
-			<a href="{{ support }}" style="color: rgb(1, 50, 155);"><p>Altaviz Support</p></a>
+			{% if support != "nowhere" %}
+				<a href="{{ support }}" style="color: rgb(1, 50, 155);"><p>Link</p></a>
+			{% endif %}
 			<p style="margin-bottom: 0;">Best regards,<br>Altaviz Support Limited Team.</p>
 			<img src="cid:logo.png" alt="Altaviz Support Limited Logo" style="display: block; max-width: auto; height: 25px;" />
 		</div>

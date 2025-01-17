@@ -14,6 +14,11 @@ from django.utils import timezone
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from types import SimpleNamespace
+import requests, re
+try:
+	from project_altaviz.myCredentials import credentials
+except ImportError as e:
+	print(f"Error importing credentials: {e}")
 
 
 # Create your views here.
@@ -560,3 +565,40 @@ def queryDB(request):
 	responseData = {"response": resultCount}
 	print(f'response count for {queryType}: {responseData}')
 	return Response(responseData)
+
+# @api_view(['GET'])
+# def verifyEmailExistence(request, email):
+# 	print(f'email query: {email}')
+# 	# Use re.match() with the regex pattern
+# 	emailForm = r"^[^\s@]+@[^\s@]+\.[^\s@]+$"
+# 	if re.match(emailForm, email):
+# 		print(f"Valid email address: {email}")
+# 		api_key = credentials['ZEROBOUNCE']
+# 		url = f"https://api.zerobounce.net/v2/validate?api_key={api_key}&email={email}"
+
+# 		try:
+# 			response = requests.get(url)
+# 			print(f"API response: {response}")
+# 			valid = response.json()
+# 			print(f"email is valid: {valid}")
+# 			valid = valid['status'] == 'valid'
+# 			print(f"email is valid: {valid}, int value: {int(valid)}")
+# 			response.raise_for_status()  # Raise an exception for HTTP errors
+# 			return Response({'msg': int(valid)})
+# 		except Exception as e:
+# 			print(f"Error making API request: {e}")
+# 			return Response({'error': f"error: check your mail again or i'm out of juice."})
+# 	else:
+# 		print(f"Invalid email address: {email}")
+# 		return Response({'msg': 0})
+
+
+# Test the function
+# email_to_check = "test@example.com"
+# result = verifyEmailExistence(email_to_check)
+
+# if result:
+#     print(f"Verification Results for {email_to_check}:")
+#     print(result)
+# else:
+#     print("Failed to verify the email address.")

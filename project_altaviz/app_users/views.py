@@ -329,8 +329,9 @@ def users(request, pk=None):
 				payload = {
 					'subject': 'Welcome to Altaviz Support Limited',
 					'message': f'Welcome to Altaviz Support Limited, {user.first_name.title()} {user.last_name.title()}.\nHere are the details of your newly created Account:\nEmail: {user.email}\nPassword: password123\nRole: {user.role}',
-					'recipient': f'{user.email}',
+					# 'recipient': f'{user.email}',
 					'heading': 'Account Details',
+					'support': 'nowhere', # this should be a link
 				}
 				sendEmail = sendEmailMethod(user=user, data=payload)
 				print(f'email sent: {sendEmail}')
@@ -511,7 +512,10 @@ def userDetaileUpdate(request, pk=None):
 			additionalText = 'Location and Branch'
 		text = f'Success. Change of {additionalText} will take effect soon as Admin approves'
 		if not changeBranch and not changeLocation: text = 'Success'
-		resp = {'msg': text}
+		# resp = {'msg': text}
+		# print(f'{resp}')
+		serializedResponseData = UserReadSerializer(user).data
+		resp = {'msg': text, 'data': serializedResponseData}
 		print(f'{resp}')
 		return Response(resp, status=status.HTTP_200_OK)
 

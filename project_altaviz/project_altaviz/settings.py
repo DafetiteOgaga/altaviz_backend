@@ -289,3 +289,6 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 # EMAIL_USE_TLS = True
 # EMAIL_HOST_USER = 'ogagadafetite@gmail.com'
 # EMAIL_HOST_PASSWORD = 'bsea decv wmcs rgvz'  # Use the App Password here
+
+# settings.py
+PASSWORD_RESET_TIMEOUT = 3600*3  # 1 hour (3600 seconds)
