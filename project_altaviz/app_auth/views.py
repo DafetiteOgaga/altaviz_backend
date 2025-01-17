@@ -124,12 +124,12 @@ def resetPasswordRequest(request):
 		print(f'email: {email}')
 		print(f'FRONTENDURL: {FRONTENDURL}')
 		print(f'user: {user}')
-		uid, token = passwordResetTokenGenerator(user)
-		print(f'uid: {uid}\ntoken: {token}')
-		resetLink = f"{FRONTENDURL}/reset-password/{uid}/{token}/"
-		print(f'resetLink: {resetLink}')
 		# return Response({"msg": "Password reset email sent successfully"}, status=status.HTTP_200_OK)
 		if user:
+			uid, token = passwordResetTokenGenerator(user)
+			print(f'uid: {uid}\ntoken: {token}')
+			resetLink = f"{FRONTENDURL}/reset-password/{uid}/{token}/"
+			print(f'resetLink: {resetLink}')
 			payload = {
 				'subject': 'Password Reset',
 				'message': f'''You recently requested for a password reset at exactly {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}.\nPls, if this is not you, Kindly reach out to the administrator as soon as possible and report this breach to recover your account.\nIf it is you, follow the reset link below.\nNote: This link will expire 3hours.''',
