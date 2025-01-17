@@ -331,7 +331,7 @@ def users(request, pk=None):
 					'message': f'Welcome to Altaviz Support Limited, {user.first_name.title()} {user.last_name.title()}.\nHere are the details of your newly created Account:\nEmail: {user.email}\nPassword: password123\nRole: {user.role}',
 					# 'recipient': f'{user.email}',
 					'heading': 'Account Details',
-					'support': 'nowhere', # this should be a link
+					'support': None, # this should be a link
 				}
 				sendEmail = sendEmailMethod(user=user, data=payload)
 				print(f'email sent: {sendEmail}')
