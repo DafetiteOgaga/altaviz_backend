@@ -6,21 +6,19 @@
 		<title>Altaviz Support Limited</title>
 	</head>
 	<body style="font-family: Arial, sans-serif; color: #333;">
-		<div style="max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 4px;">
-			<!-- <img src="cid:logo.png" alt="The Article Hive Logo" style="display: block; margin: 0 auto; max-width: 200px;" /> -->
-			<!-- Embed the logo using cid -->
-			<!-- <div style="display: flex; justify-content: end;">
-				<img src="cid:logo.png" alt="Altaviz Support Limited Logo" style="display: block; max-width: auto; height: 45px;" />
-			</div> -->
+		<div style="max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 20px; overflow-wrap: break-word;">
+			<div style="display: flex; justify-content: space-between; align-items: center;">
+				<img src="cid:logo.png" alt="Altaviz Support Limited Logo" style="height: 40px;" />
+			</div>
 			<h2 style="color: rgb(1, 50, 155);">{{ heading }}</h2>
 			<p>Hello {{ user.first_name|capfirst }},</p>
-			<p style="white-space: pre;">{{ message }}</p>
-			<p>If you have any questions or need assistance, feel free to reach out to our support team.</p>
-			{% if support != "nowhere" %}
-				<a href="{{ support }}" style="color: rgb(1, 50, 155);"><p>Link</p></a>
+			<p><span style="white-space: pre;">{{ message }}</span>
+			{% if support != None %}
+			<a href="{{ support }}" style="color: rgb(1, 50, 155); white-space: pre;">{{ linkText }}</a>
 			{% endif %}
-			<p style="margin-bottom: 0;">Best regards,<br>Altaviz Support Limited Team.</p>
-			<img src="cid:logo.png" alt="Altaviz Support Limited Logo" style="display: block; max-width: auto; height: 25px;" />
+			<span style="white-space: pre;">{{ reachoutText }}</span>
+			<span style="margin-bottom: 0;">Best regards,<br>Altaviz Support Limited Team.</span></p>
+			<!-- <img src="cid:logo.png" alt="Altaviz Support Limited Logo" style="display: block; max-width: auto; height: 25px;" /> -->
 		</div>
 	</body>
 </html>
