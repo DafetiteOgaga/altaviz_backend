@@ -889,8 +889,10 @@ def regionUserRequests(request, pk=None, type=None):
 		faults_with_requests = unresolved_faults_queryset.filter(
 			# At least one type of request exists
 			Q(partfault__isnull=False) | Q(componentfault__isnull=False),
-			Q(partfault__approved=False) & Q(partfault__rejected=False),
-			Q(componentfault__approved=False) & Q(componentfault__rejected=False)
+			(
+				(Q(partfault__approved=False) & Q(partfault__rejected=False)) |
+				(Q(componentfault__approved=False) & Q(componentfault__rejected=False))
+			)
 		).distinct()
 
 		engineers = await sync_to_async(lambda: list(User.objects.filter(
@@ -1008,8 +1010,10 @@ def totalRegionUserRequests(request, pk=None):
 		faults_with_requests = unresolved_faults_queryset.filter(
 			# At least one type of request exists
 			Q(partfault__isnull=False) | Q(componentfault__isnull=False),
-			Q(partfault__approved=False) & Q(partfault__rejected=False),
-			Q(componentfault__approved=False) & Q(componentfault__rejected=False)
+			(
+				(Q(partfault__approved=False) & Q(partfault__rejected=False)) |
+				(Q(componentfault__approved=False) & Q(componentfault__rejected=False))
+			)
 		).distinct()
 
 		engineers = await sync_to_async(lambda: list(User.objects.filter(
@@ -1478,8 +1482,10 @@ def allUserRequests(request, pk=None, type=None):
 		faults_with_requests = unresolved_faults_queryset.filter(
 			# At least one type of request exists
 			Q(partfault__isnull=False) | Q(componentfault__isnull=False),
-			Q(partfault__approved=False) & Q(partfault__rejected=False),
-			Q(componentfault__approved=False) & Q(componentfault__rejected=False)
+			(
+				Q(partfault__approved=False) & Q(partfault__rejected=False) |
+				Q(componentfault__approved=False) & Q(componentfault__rejected=False)
+			)
 		).distinct()
 
 		engineers = await sync_to_async(lambda: list(User.objects.filter(
@@ -1587,8 +1593,10 @@ def totalAllUserRequests(request, pk=None):
 		faults_with_requests = unresolved_faults_queryset.filter(
 			# At least one type of request exists
 			Q(partfault__isnull=False) | Q(componentfault__isnull=False),
-			Q(partfault__approved=False) & Q(partfault__rejected=False),
-			Q(componentfault__approved=False) & Q(componentfault__rejected=False)
+			(
+				Q(partfault__approved=False) & Q(partfault__rejected=False) |
+				Q(componentfault__approved=False) & Q(componentfault__rejected=False)
+			)
 		).distinct()
 
 		engineers = await sync_to_async(lambda: list(User.objects.filter(
