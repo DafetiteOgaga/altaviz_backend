@@ -5,4 +5,5 @@ urlpatterns = [
 	# Create your urlpatterns here.
 	path('', view=views.home, name='home'),
 	path('nothing/', view=views.placeholder, name='placeholder'),
+	path('login-details/', view=views.getAllAccounts, name='getAllAccounts'),
 ]
