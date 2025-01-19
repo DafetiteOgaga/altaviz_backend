@@ -28,7 +28,7 @@ def bankRegionLocations(request, pk=None, state=None, bank=None):
     print(f'region: {region.name}')
     states = [state for state in region.regionstates.all()]
     for stateName in states:
-        print(f'    ##### state match: {stateName.name == state}')
+        # print(f'    ##### state match: {stateName.name == state}')
         if stateName.name != state: continue
         print(f'    {stateName}')
         stateEntry = {
@@ -37,7 +37,7 @@ def bankRegionLocations(request, pk=None, state=None, bank=None):
         }
         banks = [bank for bank in stateName.banksList.all()]
         for bankName in banks:
-            print(f'        ##### bank match: {bankName.name == bank}')
+            # print(f'        ##### bank match: {bankName.name == bank}')
             if bankName.name != bank: continue
             print(f'        {bankName}')
             locations = [location for location in bankName.banklocations.all()]
@@ -69,9 +69,10 @@ def RegionLocations(request, pk=None, state=None):
     # user = User.objects.get(pk=pk)
     # print(f'user obj and role: {user} is a {user.role} expert')
     locationList = []
-    region = Region.objects.prefetch_related('regionstates__statelocations').get(pk=pk)
+    region = Region.objects.prefetch_related('regionstates__statelocations').filter(pk=pk).first()
     print(f'region: {region.name}')
     states = [state for state in region.regionstates.all()]
+    print(f'states: {states}')
     for stateName in states:
         if stateName.name != state: continue
         print(f'    {stateName}')
