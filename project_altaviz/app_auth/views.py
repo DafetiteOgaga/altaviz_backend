@@ -128,7 +128,9 @@ def resetPasswordRequest(request):
 		if user:
 			uid, token = passwordResetTokenGenerator(user)
 			print(f'uid: {uid}\ntoken: {token}')
-			resetLink = f"{FRONTENDURL}/reset-password/{uid}/{token}/"
+			currentTimeInMilliseconds = int(time.time() * 1000)
+			print(f'currentTimeInMilliseconds: {currentTimeInMilliseconds}')
+			resetLink = f"{FRONTENDURL}/reset-password/{uid}/{currentTimeInMilliseconds}/{token}/"
 			print(f'resetLink: {resetLink}')
 			payload = {
 				'subject': 'Password Reset',
