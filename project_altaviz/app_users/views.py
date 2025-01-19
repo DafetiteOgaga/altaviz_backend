@@ -389,6 +389,7 @@ def userDetaileUpdate(request, pk=None):
 	if request.method == 'POST':
 		print('POST payload:', request.data)
 		print(f'user pk is:', pk)
+		# return Response({'msg': 'allgood'})
 		# check for existing and unapproved requests
 		previousRequest = UpdateLocationAndBranchNotification.objects.filter(
 			requestUser=user,
@@ -425,13 +426,14 @@ def userDetaileUpdate(request, pk=None):
 		# return Response({'msg': 'allgood'})
 		changeLocation = requestLocation != userLocation
 		print(f'changeLocation (user): {changeLocation}')
-		custodian = Custodian.objects.select_related('branch').filter(custodian=user)
+		# return Response({'msg': 'allgood'})
+		custodian = Custodian.objects.select_related('branch').filter(custodian=user).first()
 		print(f'custodian: {custodian}')
 		changeBranch = None
 		updateDetailes = None
 		# return Response({'msg': 'allgood'})
 		if custodian:
-			custodian = custodian[0]
+			# custodian = custodian[0]
 			print(f'custodian: {custodian.custodian.first_name}')
 			print(f'branch: {custodian.branch.name}')
 			branchLocation = custodian.branch.location.location
@@ -454,10 +456,15 @@ def userDetaileUpdate(request, pk=None):
 		# copy the request data to data and set profile_picture value accordongly
 		data = {item: request.data[item] for item in request.data if item != 'profile_picture'}
 		profilePictureValue = request.data.get('profile_picture')
+		print(f'profilePictureValue: {profilePictureValue}')
 		if profilePictureValue in ['null', 'undefined']:
 			data['profile_picture'] = None
+		elif profilePictureValue and profilePictureValue == user.profile_picture.url:
+			print('no new picture found for profile. keeping the current one.')
 		else:
+			print('new profile picture found for profile. replacing it.')
 			data['profile_picture'] = request.FILES.get('profile_picture', None)
+		# print(f'profile_picture: {data["profile_picture"]}')
 		data['username'] = user.username
 		data['email'] = user.email
 		data['phone'] = user.phone
@@ -466,6 +473,7 @@ def userDetaileUpdate(request, pk=None):
 		data['is_active'] = user.is_active
 		print(f'state: {user.state.name}')
 		print(f'data: {data}')
+		# return Response({'msg': 'allgood'})
 		serializedUser = UserUpdateSerializer(instance=user, data=data)
 		print(f'is user serializer valid: {serializedUser.is_valid()}')
 		# text = None
