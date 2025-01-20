@@ -235,7 +235,7 @@ class UpdateLocationAndBranchNotificationSerializer(serializers.ModelSerializer)
 class AllUsersSerializer(serializers.ModelSerializer):
 	class Meta:
 		model = User
-		fields = ['id', 'first_name', 'last_name', 'username', 'last_login', 'date_joined', 'is_active', 'profile_picture']
+		fields = ['id', 'first_name', 'last_name', 'username', 'role', 'last_login', 'date_joined', 'is_active', 'profile_picture']
 
 class UserNamesSerializer(serializers.ModelSerializer):
     class Meta:
