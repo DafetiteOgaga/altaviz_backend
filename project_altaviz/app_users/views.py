@@ -779,7 +779,7 @@ def totalAssignEngineerToLocation(request, pk=None):
 @api_view(['GET'])
 def getAllUsers(request, pk=None):
 	print(f'pk: {pk}')
-	users = User.objects.all()
+	users = User.objects.filter(is_superuser=False)
 	print(f'len users: {len(users)}')
 	print(f'ids: {[user.id for user in users]}')
 	serializedUsers = AllUsersSerializer(instance=users, many=True).data
