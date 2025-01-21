@@ -457,6 +457,20 @@ def userDetaileUpdate(request, pk=None):
 		data = {item: request.data[item] for item in request.data if item != 'profile_picture'}
 		profilePictureValue = request.data.get('profile_picture')
 		print(f'profilePictureValue: {profilePictureValue}')
+
+
+
+		#######################################################
+		#######################################################
+		#  use try except block here to mitigate pictures with long names that gives error
+		#######################################################
+		#######################################################
+
+
+
+		# if profilePictureValue and len(profilePictureValue) >= 80:
+		# 		print('name too long')
+		# 		return Response({'msg': 'Name of picture to long. rename it'}, status=status.HTTP_400_BAD_REQUEST)
 		if profilePictureValue in ['null', 'undefined']:
 			data['profile_picture'] = None
 		elif profilePictureValue and profilePictureValue == user.profile_picture.url:
@@ -484,7 +498,12 @@ def userDetaileUpdate(request, pk=None):
 			role = user.role
 			print(f'role:', role)
 		elif serializedUser.errors:
+			print(f'error_messages:', serializedUser.error_messages)
+			print(f'default_error_messages:', serializedUser.default_error_messages)
 			print(f'user error: {serializedUser.errors}')
+			if serializedUser.errors.get('profile_picture') and len(profilePictureValue) >= 100:
+				print('name too long')
+				return Response({'msg': 'Name of photo too long. rename it'}, status=status.HTTP_400_BAD_REQUEST)
 			return Response({'msg': 'Unsuccessful'}, status=status.HTTP_400_BAD_REQUEST)
 		# check is there is a pending update request and redirects to PATCH if true
 		if previousRequest:
