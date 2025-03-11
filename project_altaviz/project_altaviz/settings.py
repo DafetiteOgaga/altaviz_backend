@@ -40,6 +40,7 @@ ALLOWED_HOSTS = [
     'altaviz-frontend.vercel.app/',
     'localhost',
     '127.0.0.1',
+    '192.168.43.214',
 ]
 # ALLOWED_HOSTS = []
 
@@ -241,6 +242,8 @@ CORS_ALLOW_ALL_ORIGINS = True
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "http://192.168.43.214:8081",
+    # "http://192.168.43.214:8081",
 ]
 # CORS_ALLOW_HEADERS = ['*']
 # CORS_ALLOW_METHODS = ['*']
@@ -292,3 +295,4 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # settings.py
 PASSWORD_RESET_TIMEOUT = 3600*3  # 1 hour (3600 seconds)
+SESSION_COOKIE_AGE = 3600  # 1 hour
