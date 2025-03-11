@@ -18,8 +18,17 @@ from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes
 import time
+from django.http import JsonResponse
+from django.middleware.csrf import get_token
 
 # Generate a unique token
+@api_view(['GET'])
+def get_csrf_token(request):
+	print(f'get_csrf_token payload: {request.data}')
+	csrfToken = {'csrfToken': get_token(request)}
+	print(f'{csrfToken}')
+	return JsonResponse(csrfToken)
+
 def passwordResetTokenGenerator(user):
 	token_generator = PasswordResetTokenGenerator()
 	uid = urlsafe_base64_encode(force_bytes(user.pk))  # Encode the user's primary key
@@ -65,6 +74,7 @@ def loginView(request):
 					serializedData = UserReadSerializer(user).data
 					# response_data = serializer.data  # Serialized user data
 					print(f'user role: 22222222222 {user.role}')
+					print(f'serializedData: {serializedData}')
 					return Response(serializedData, status=status.HTTP_200_OK)
 					# return Response({"message": "Login successful"}, status=status.HTTP_200_OK)
 				else:
@@ -72,13 +82,20 @@ def loginView(request):
 			else:
 				return Response({"message": "Oopsy! Invalid credentials"}, status=status.HTTP_404_NOT_FOUND)
 		else:
-			return Response({"message": "Oops! Account does not exist"}, status=status.HTTP_404_NOT_FOUND)
+			return Response({"message": "Oopsy! Account does not exist"}, status=status.HTTP_404_NOT_FOUND)
 
 @api_view(['POST'])
 def logoutView(request):
+	print(f'logout payload: {request.data}')
 	if request.method == 'POST':
-		logout(request)
-		return Response({"message": "Logout from backend successful"}, status=status.HTTP_200_OK)
+		print(f'user is authenticated: {request.user.is_authenticated}')
+		if request.user.is_authenticated:
+			logout(request)
+			print('You are now logged out')
+			return Response({"message": "Logout from backend successful"}, status=status.HTTP_200_OK)
+		else:
+			print('You are not logged in')
+			return Response({"message": "You are not logged in"}, status=status.HTTP_200_OK)
 
 @api_view(['POST'])
 def changePassword(request, pk=None):
@@ -201,3 +218,19 @@ def checkAuth(request):
 			# return Response({"isAuthenticated": True}, status=status.HTTP_200_OK)
 		else:
 			return Response({"isAuthenticated": False}, status=status.HTTP_401_UNAUTHORIZED)
+
+@api_view(['GET', 'POST', 'PUT', 'DELETE', 'PATCH'])
+def testApi(request):
+	print(f'testApi payload: {request.data}')
+	if request.method == 'GET':
+		return Response({"msg": "GET request successful"}, status=status.HTTP_200_OK)
+	elif request.method == 'POST':
+		return Response({"msg": "POST request successful"}, status=status.HTTP_200_OK)
+	elif request.method == 'PUT':
+		return Response({"msg": "PUT request successful"}, status=status.HTTP_200_OK)
+	elif request.method == 'DELETE':
+		return Response({"msg": "DELETE request successful"}, status=status.HTTP_200_OK)
+	elif request.method == 'PATCH':
+		return Response({"msg": "PATCH request successful"}, status=status.HTTP_200_OK)
+	else:
+		return Response({"msg": "Invalid request method"}, status=status.HTTP_400_BAD_REQUEST)
