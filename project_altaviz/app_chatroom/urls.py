@@ -7,4 +7,5 @@ urlpatterns = [
 	# Create your urlpatterns here.
 	# u - user and c - contact
 	path('chat-user/<int:cpk>/<int:upk>/', view=views.chatUser, name='chatUser'),
+	path('chat-user/<int:cpk>/<int:upk>/<str:mobile>/', view=views.chatUser, name='chatUser'),
 ]
