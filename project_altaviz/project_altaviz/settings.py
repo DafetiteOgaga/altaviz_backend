@@ -243,6 +243,7 @@ CSRF_TRUSTED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "http://192.168.43.214:8081",
+    "https://altavizapp.pythonanywhere.com",
     # "http://192.168.43.214:8081",
 ]
 # CORS_ALLOW_HEADERS = ['*']
