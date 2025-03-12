@@ -7,11 +7,12 @@ from app_users.models import User
 from .serializers import ChatsSerializer
 import json
 from django.db.models import Q
+from rest_framework.pagination import PageNumberPagination
 from app_sse_notification.firebase_utils import send_chat_notification
 
 # Create your views here.
 @api_view(['GET', 'POST', 'PATCH', 'DELETE'])
-def chatUser(request, cpk=None, upk=None):
+def chatUser(request, cpk=None, upk=None, mobile=None):
 	print(f'upk: {upk}')
 	print(f'cpk: {cpk}')
 	print(f'{request.method} method')
@@ -50,6 +51,12 @@ def chatUser(request, cpk=None, upk=None):
 		print('chats:')
 		[print(f'''{msg.contact.first_name if msg.message.split("=")[0]==msg.contact.username else msg.user.first_name}: {msg.message.split('=')[1]}''') for msg in chats]
 		print('############### GET done ###############')
+		if mobile:
+			userPaginator = PageNumberPagination()
+			userPaginator.page_size = 20  # Number of items per page
+			paginated_chats = userPaginator.paginate_queryset(serializedChats, request)
+			return userPaginator.get_paginated_response(paginated_chats)
+			# return Response(serializedChats, status=status.HTTP_200_OK)
 		return Response(serializedChats, status=status.HTTP_200_OK)
 	elif request.method == 'POST':
 		# data = request.data.copy()
@@ -58,6 +65,7 @@ def chatUser(request, cpk=None, upk=None):
 		serializer = ChatsSerializer(data=data)
 		if serializer.is_valid():
 			newChat = serializer.save(user=user, contact=contact)
+			# newChat = []
 			print('saved chat #############')
 			serializedChats = ChatsSerializer(instance=newChat).data
 			serializedChats = list(serializedChats)[::-1]
