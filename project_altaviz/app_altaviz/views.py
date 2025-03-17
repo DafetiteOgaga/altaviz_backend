@@ -25,3 +25,9 @@ def getAllAccounts(request):
     users = User.objects.filter(is_superuser=False)
     usersSerializer = UserReadHandlersSerializer(users, many=True).data
     return Response(usersSerializer, status=status.HTTP_200_OK)
+
+@api_view(['GET'])
+def versionNumber(request):
+    versionDict = {'version': 'v20250317.1502'}
+    print("versionDict: ", versionDict)
+    return Response(versionDict, status=status.HTTP_200_OK)
