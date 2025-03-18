@@ -56,10 +56,29 @@ def faultDetail(request, pk=None):
 	serializer = async_to_sync(getData)()
 	return Response(serializer, status=status.HTTP_200_OK)
 
+async def saveFault(faultDict):
+	# Wrap serializer operations in sync_to_async
+	print('before serializer')
+	serializer = await sync_to_async(lambda: FaultCreateUpdateSerializer(data=faultDict))()
+	print('after serializer')
+	if await sync_to_async(serializer.is_valid)():
+		print('before serializer save')
+
+		await sync_to_async(serializer.save)()
+		print(f'saved: {faultDict}')
+		print(f'SAVED #########################')
+		return faultDict
+	else:
+		print(f'fault serializer errors: {serializer.errors}')
+		print(f'fault serializer error message: {serializer.error_messages}')
+		return {'msg': serializer.errors}
+
 @api_view(['POST'])
 def fault(request, pk=None):
 	if request.method == 'POST':
 		print('fault payload:', request.data)
+		# print('here #####')
+		# return Response({'msg': 'good'})
 		async def postData():
 			try:
 				# Get region and location objects asynchronously
@@ -75,56 +94,63 @@ def fault(request, pk=None):
 				return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 			dictionary = {item: request.data[item] for item in request.data}
 			print(f'dictionary: {dictionary}')
-			faultList = [i for i in request.data if i.startswith('fault') or i.startswith('other')]
-			print(f'faultList: {faultList}')
-			dictOfLists = compartmentalizedList(faultList)
-			print(f'dictOfLists: {dictOfLists}')
-			length = len(dictOfLists)
-
-			# Validation for empty fault list
-			if not faultList:
-				return Response({'error': 'No faults provided'}, status=status.HTTP_400_BAD_REQUEST)
-
-			try:
-				print('try block')
-				dicttn = {}
-				# Process each fault asynchronously
-				for item in dictOfLists.values():
-					print(f'item:', item)
-					dicttn['title'] = request.data[item[0]]
-					if len(item) > 1:
-						dicttn['other'] = request.data[item[1]]
+			mobileDict = {}
+			if request.data.get('mobile'):
+				for item in request.data:
+					if item == 'location':
+						mobileDict[item] = location.id
+					elif item == 'other' and request.data.get(item) == 'null':
+						mobileDict[item] = None
 					else:
-						dicttn['other'] = None
-					dicttn.update({item: request.data[item] for item in list(request.data)})
-					dicttn['location'] = location.id
-					print(f'new dicttn:', dicttn)
+						mobileDict[item] = request.data[item]
+				print(f'mobileDict ###########: {mobileDict}')
+				savedFault = await saveFault(mobileDict)
+				print(f'savedFault: {savedFault}')
+				if 'msg' in savedFault:
+					return Response(saveFault['msg'], status=status.HTTP_400_BAD_REQUEST)
+				print(f'fault created ##########: {savedFault["title"]}')
+			else:
+				faultList = [i for i in request.data if i.startswith('fault') or i.startswith('other')]
+				print(f'faultList: {faultList}')
+				dictOfLists = compartmentalizedList(faultList)
+				print(f'dictOfLists: {dictOfLists}')
+				length = len(dictOfLists)
 
-					# Wrap serializer operations in sync_to_async
-					print('before serializer')
-					serializer = await sync_to_async(lambda: FaultCreateUpdateSerializer(data=dicttn))()
-					print('after serializer')
-					if await sync_to_async(serializer.is_valid)():
-						print('before serializer save')
+				# Validation for empty fault list
+				if not faultList:
+					return Response({'error': 'No faults provided'}, status=status.HTTP_400_BAD_REQUEST)
+
+				try:
+					print('try block')
+					dicttn = {}
+					# Process each fault asynchronously
+					for item in dictOfLists.values():
+						print(f'item:', item)
+						dicttn['title'] = request.data[item[0]]
+						if len(item) > 1:
+							dicttn['other'] = request.data[item[1]]
+						else:
+							dicttn['other'] = None
+						dicttn.update({item: request.data[item] for item in list(request.data)})
+						dicttn['location'] = location.id
+						print(f'new dicttn:', dicttn)
+						# Save fault asynchronously
+						savedFault = await saveFault(dicttn)
+						print(f'savedFault: {savedFault}')
+						if 'msg' in savedFault:
+							return Response(saveFault['msg'], status=status.HTTP_400_BAD_REQUEST)
+						print(f'fault created ##########: {savedFault["title"]}')
 						length -= 1
-						await sync_to_async(serializer.save)()
-						print(f'saved: {dicttn}')
-						print(f'SAVED #########################')
 						if length != 0:
 							continue
-					else:
-						print(f'fault serializer errors: {serializer.errors}')
-						print(f'fault serializer error message: {serializer.error_messages}')
-						return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-				# Send notification outside the loop
-				print('start send_notification ##########')
-				await sync_to_async(send_notification)(message=f'fault created-{region.name}')
-				print('end send_notification ##########')
-				return Response({'message': 'All faults created successfully'}, status=status.HTTP_201_CREATED)
-
-			except Exception as e:
-				print(f'error for fault: {e}')
-				return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+				except Exception as e:
+					print(f'error for fault: {e}')
+					return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+			# Send notification outside the loop
+			print('start send_notification ##########')
+			await sync_to_async(send_notification)(message=f'fault created-{region.name}')
+			print('end send_notification ##########')
+			return Response({'message': 'Fault(s) created successfully'}, status=status.HTTP_201_CREATED)
 
 		return async_to_sync(postData)()
 
@@ -140,6 +166,7 @@ def custodianPendingFaults(request, pk=None, type=None):
 		print('request fault id:', request.data['faultID'])
 		async def patchData():
 			print('in async fxn')
+			# return Response({'msg': 'good'})
 			# engineer uses this to verify faults
 			# print('request fault id type:', type(request.data['faultID']))
 			fault = await sync_to_async(Fault.objects.select_related('logged_by__branch__region').get)(pk=request.data['faultID'])
