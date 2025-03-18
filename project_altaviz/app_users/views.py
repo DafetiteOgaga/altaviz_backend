@@ -578,6 +578,7 @@ def approvedDetailsChange(request, pk=None, type=None):
 	if request.method == 'PATCH':
 		print('approvedDetailsChange payload:', request.data)
 
+		# return Response({'msg': 'Success'}, status=status.HTTP_200_OK)
 		# send along with the request object, the id of the user
 		# who requested the change using userID
 		user = User.objects.get(pk=request.data['userID'])
@@ -707,6 +708,8 @@ def assignEngineerToLocation(request, pk=None, type=None):
 		print(f'supevisor:', supervisor)
 		print('assignEngineerToLocation PATCH payload:', request.data)
 		listKeys = list(request.data)
+		print(f'list version: {listKeys}')
+		listKeys = [item for item in listKeys if item != 'mobile']
 		print(f'list version: {listKeys}')
 		region = None
 		for key in listKeys:
