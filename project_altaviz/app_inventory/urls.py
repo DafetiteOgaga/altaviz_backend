@@ -58,6 +58,7 @@ urlpatterns = [
 	path('workshop-request/<str:type>/<int:pk>/', view=views.unapprovedWorkshopRequests, name='unapprovedWorkshopRequests-type'),
 
 	path('all-request-only/<str:type>/<int:pk>/', view=views.allRequestsOnly, name='allRequestsOnly-type'),
+	path('all-request-only/<int:pk>/total/', view=views.totalAllRequestsOnly, name='totalAllRequestsOnly'),
 
 	path('workshop-component-request/<int:pk>/', view=views.workshopRequests, name='workshopRequests'),
 	path('workshop-component-request/<str:type>/<int:pk>/', view=views.workshopRequests, name='workshopRequests-type'),
