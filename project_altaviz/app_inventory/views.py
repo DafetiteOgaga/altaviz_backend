@@ -10,6 +10,7 @@ from django.db.models import Q, Prefetch
 # from app_sse_notification.views import send_sse_notification
 from app_sse_notification.firebase_utils import send_notification
 from asgiref.sync import async_to_sync, sync_to_async
+import json
 
 def compartmentalizedList(listValue: list):
 	newDict = {}
@@ -273,6 +274,18 @@ def parts(request, pk=None):
 				return Response(serializer, status=status.HTTP_200_OK)
 			return async_to_sync(getAllParts)()
 
+async def savePostedPart(dataDict):
+	ptSerializer = await sync_to_async(lambda: UnconfirmedPartCreateSerializer(data=dataDict))()
+	print(f'ptSerializer is valid: {await sync_to_async(ptSerializer.is_valid)()}')
+	if await sync_to_async(ptSerializer.is_valid)():
+		print(f'ptSerializer is valid')
+		await sync_to_async(ptSerializer.save)()
+		print(f'ptSerializer saved #################')
+		return ptSerializer
+	else:
+		print(f'ptSerializer error: {ptSerializer.errors}')
+		return {'msg': 'Could not complete.'}
+
 @api_view(['GET', 'POST', 'PATCH'])
 def unapprovedPart(request, pk=None, type=None):
 	print('################# end unapprovedPart #################')
@@ -281,41 +294,55 @@ def unapprovedPart(request, pk=None, type=None):
 	if request.method == 'POST':
 		async def postData():
 			print('PART payload:', request.data)
-			partRequestList = [
-				i for i in (list(request.data))
-				if i.startswith('name') or
-					i.startswith('quantity') or
-					i.startswith('others') or
-					i.startswith('reason')
-			]
-			dictOfLists = compartmentalizedList(partRequestList)
-			length = len(list(dictOfLists))
-			print(f'dictOfList: {dictOfLists}')
-			print(f'dictOfList length: {length}')
-			for key in dictOfLists.values():
-				nameOfPart = await sync_to_async(PartName.objects.get)(name=request.data[key[0]])
-				cleanedData = {
-					'name': nameOfPart.id,
-					'quantity': request.data[key[1]]
-				}
-				# print(f'cleanedData: {cleanedData}')
-				cleanedData['user'] = request.data['user']
-				# cleanedData['approved_by'] = None if request.data['approved_by'] == 'null' else request.data['approved_by']
-				print(f'cleanedData: {cleanedData}')
-				ptSerializer = await sync_to_async(lambda: UnconfirmedPartCreateSerializer(data=cleanedData))()
-				print(f'ptSerializer is valid: {await sync_to_async(ptSerializer.is_valid)()}')
-				if await sync_to_async(ptSerializer.is_valid)():
-					print(f'ptSerializer is valid')
-					await sync_to_async(ptSerializer.save)()
-					print(f'ptSerializer saved #################')
-				else:
-					print(f'ptSerializer error: {ptSerializer.errors}')
-					return Response({'msg': 'Could not complete.'}, status=status.HTTP_201_CREATED)
+			mobile = request.data.get('mobile')
+			if mobile:
+				# response = request.data['name']
+				# print('mobile request #################')
+				dictOfObjects = {item: request.data[item] for item in request.data}
+				print(f'dictOfObjects: {dictOfObjects}')
+				nameOfPart =  await sync_to_async(PartName.objects.get)(name=request.data['name'])
+				dictOfObjects['name'] = nameOfPart.id
+				print(f'dictOfObjects2: {dictOfObjects}')
+				ptSerializer = await savePostedPart(dictOfObjects)
+				if 'msg' in ptSerializer:
+					return Response(ptSerializer, status=status.HTTP_201_CREATED)
+				# responseInstances = []
+				# responseInstances.append(await saveCompRequest(dictOfObjects))
+				# print('Response Instances:', json.dumps(responseInstances, indent=4))
+				# if 'msg' in responseInstances:
+				# 	return Response(responseInstances, status=status.HTTP_400_BAD_REQUEST)
+				# return Response({'msg': f'{response} Received.'}, status=status.HTTP_200_OK)
+			else:
+				partRequestList = [
+					i for i in (list(request.data))
+					if i.startswith('name') or
+						i.startswith('quantity') or
+						i.startswith('others') or
+						i.startswith('reason')
+				]
+				dictOfLists = compartmentalizedList(partRequestList)
+				length = len(list(dictOfLists))
+				print(f'dictOfList: {dictOfLists}')
+				print(f'dictOfList length: {length}')
+				for key in dictOfLists.values():
+					nameOfPart = await sync_to_async(PartName.objects.get)(name=request.data[key[0]])
+					cleanedData = {
+						'name': nameOfPart.id,
+						'quantity': request.data[key[1]]
+					}
+					# print(f'cleanedData: {cleanedData}')
+					cleanedData['user'] = request.data['user']
+					# cleanedData['approved_by'] = None if request.data['approved_by'] == 'null' else request.data['approved_by']
+					print(f'cleanedData: {cleanedData}')
+					ptSerializer = await savePostedPart(cleanedData)
+					if 'msg' in ptSerializer:
+						return Response(ptSerializer, status=status.HTTP_201_CREATED)
 			print('start send_notification ##########')
 			await sync_to_async(send_notification)(message='fixed part ready-hr')
 			print('end send_notification ##########')
+			reposonseMobile = request.data.get('name') if mobile else 'Part(s)'
 			print('################# end unapprovedPart #################')
-			return Response({'received': 'Part(s) Received and awaits approval.'}, status=status.HTTP_201_CREATED)
+			return Response({'received': f'{reposonseMobile} Received and awaits approval.'}, status=status.HTTP_201_CREATED)
 		return async_to_sync(postData)()
 	elif request.method == 'PATCH':
 		# ###############################################################
@@ -348,7 +375,8 @@ def unapprovedPart(request, pk=None, type=None):
 			part.approved_by = user
 			await sync_to_async(part.save)()
 			print(f'status (after)=> approved: {part.approved}, rejected: {part.rejected}')
-			print(f'fixed part name: {part.name.name}')
+			fixedPart = part.name.name
+			print(f'fixed part name: {fixedPart}')
 			print(f'fixed part quantity: {part.quantity}')
 			if request.data.get('approved') == 'true':
 				partialData = {'name': part.name.name, 'quantity': part.quantity, 'action': False}
@@ -364,7 +392,7 @@ def unapprovedPart(request, pk=None, type=None):
 			print('start send_notification ##########')
 			await sync_to_async(send_notification)(message='approve or reject fixed parts-hr')
 			print('end send_notification ##########')
-			return Response({'msg': f'Part {reaponse}'}, status=status.HTTP_200_OK)
+			return Response({'msg': f'{fixedPart} {reaponse}'}, status=status.HTTP_200_OK)
 		return async_to_sync(patchData)()
 	elif request.method == 'GET':
 		print('################# user unapprovedPart noti #################')
@@ -457,6 +485,21 @@ def totalUnapproved(request, pk=None):
 		return Response({'total': len(unapprovedUserPosts)}, status=status.HTTP_200_OK)
 	return async_to_sync(getTotalUnapproved)()
 
+async def saveCompRequest(dataPayload):
+	responseInstances = []
+	requestSerializer = await sync_to_async(lambda: RequestComponentCreateSerializer(data=dataPayload))()
+	print(f'requestSerializer is valid: {await sync_to_async(requestSerializer.is_valid)()}')
+	if await sync_to_async(requestSerializer.is_valid)():
+		print(f'requestSerializer is valid')
+		await sync_to_async(requestSerializer.save)()
+		print(f'requestSerializer saved #################')
+		print(f'requestSerializer saved instance: {requestSerializer.instance}')
+		responseInstances.append(await sync_to_async(lambda: RequestComponentReadSerializer(requestSerializer.instance).data)())
+		return responseInstances
+	else:
+		print(f'requestSerializer error: {requestSerializer.errors}')
+		return {'msg': f'{requestSerializer.errors}'}
+
 @api_view(['GET', 'POST', 'PATCH'])
 def requestComponent(request, pk=None, type=None):
 	if request.method == 'POST':
@@ -468,45 +511,55 @@ def requestComponent(request, pk=None, type=None):
 			region = user.region.name
 			print(f'region:', region)
 			# dicttn = {}
-			compRequestList = [
-				i for i in (list(request.data))
-				if i.startswith('name') or
-					i.startswith('quantity') or
-					i.startswith('others') or
-					i.startswith('reason')
-			]
-			dictOfLists = compartmentalizedList(compRequestList)
-			length = len(dictOfLists)
-			_ = length
-			print(f'dictOfList: {dictOfLists}')
-			print(f'dictOfList length: {length}')
-			responseInstances = []
-			for key in dictOfLists.values():
-				# print(f"""request.data.get("fault"): {request.data.get('fault')}""")
-				cleanedData = {
-					'name': request.data[key[0]],
-					'quantityRequested': request.data[key[1]],
-					'reason': request.data[key[2]],
-					'fault': None if (request.data.get('fault') == 'null' or request.data.get('fault') == 'undefined') else request.data.get('fault'),
-				}
-				print(f'cleanedData: {cleanedData}')
-				cleanedData['user'] = request.data['user']
-				# cleanedData['fault'] = Fault.objects.get(id=request.data['fault'])
-				print(f'cleanedData: {cleanedData}')
-				requestSerializer = await sync_to_async(lambda: RequestComponentCreateSerializer(data=cleanedData))()
-				print(f'requestSerializer is valid: {await sync_to_async(requestSerializer.is_valid)()}')
-				if await sync_to_async(requestSerializer.is_valid)():
-					print(f'requestSerializer is valid')
-					await sync_to_async(requestSerializer.save)()
-					print(f'requestSerializer saved #################')
-					print(f'requestSerializer saved instance: {requestSerializer.instance}')
-					responseInstances.append(await sync_to_async(lambda: RequestComponentReadSerializer(requestSerializer.instance).data)())
-				else:
-					print(f'requestSerializer error: {requestSerializer.errors}')
+			responseInstances = None
+			if request.data.get('mobile'):
+				response = request.data['name']
+				print('mobile request #################')
+				dictOfObjects = {item: request.data[item] for item in request.data}
+				dictOfObjects['fault'] = None if (request.data.get('fault') == 'null' or request.data.get('fault') == 'undefined') else request.data.get('fault')
+				print(f'dictOfObjects: {dictOfObjects}')
+				responseInstances = await saveCompRequest(dictOfObjects)
+				print('Response Instances:', json.dumps(responseInstances, indent=4))
+				if 'msg' in responseInstances:
+					return Response(responseInstances, status=status.HTTP_400_BAD_REQUEST)
+			else:
+				compRequestList = [
+					i for i in (list(request.data))
+					if i.startswith('name') or
+						i.startswith('quantity') or
+						i.startswith('others') or
+						i.startswith('reason')
+				]
+				dictOfLists = compartmentalizedList(compRequestList)
+				length = len(dictOfLists)
+				_ = length
+				print(f'dictOfList: {dictOfLists}')
+				print(f'dictOfList length: {length}')
+				responseInstances = []
+				for key in dictOfLists.values():
+					# print(f"""request.data.get("fault"): {request.data.get('fault')}""")
+					cleanedData = {
+						'name': request.data[key[0]],
+						'quantityRequested': request.data[key[1]],
+						'reason': request.data[key[2]],
+						'fault': None if (request.data.get('fault') == 'null' or request.data.get('fault') == 'undefined') else request.data.get('fault'),
+					}
+					print(f'cleanedData: {cleanedData}')
+					cleanedData['user'] = request.data['user']
+					# cleanedData['fault'] = Fault.objects.get(id=request.data['fault'])
+					print(f'cleanedData: {cleanedData}')
+					responseInstances = await saveCompRequest(cleanedData)
+					print('Response Instances:', json.dumps(responseInstances, indent=4))
+					if 'msg' in responseInstances:
+						return Response(responseInstances, status=status.HTTP_400_BAD_REQUEST)
+				if _ > 1:
+					response = 'Requests'
+				elif cleanedData:
+					response = f'{cleanedData["name"]} Request'
+				print(f'length of requests: {_}')
 			print('################# end requestComponent #################')
-			response = 'Requests' if _ > 1 else f'{cleanedData["name"]} Request'
-			print(f'length of requests: {_}')
 			print(f'len responseInstances: {len(responseInstances)}')
+			print(f'responseInstances: {responseInstances}')
 			print(f'response: {response}')
 			print('start send_notification ##########')
 			await sync_to_async(send_notification)(message=f'make component request-{region}')
@@ -666,6 +719,21 @@ def approvedRequestComponent(request, pk=None):
 		return async_to_sync(approvedRequests)()
 
 # ###################################
+async def savePartRequest(dataPayload):
+	responseInstances = []
+	requestSerializer = await sync_to_async(lambda: RequestPartCreateSerializer(data=dataPayload))()
+	print(f'requestSerializer is valid: {await sync_to_async(requestSerializer.is_valid)()}')
+	if await sync_to_async(requestSerializer.is_valid)():
+		print(f'requestSerializer is valid')
+		await sync_to_async(requestSerializer.save)()
+		print(f'requestSerializer saved #################')
+		print(f'requestSerializer saved instance: {requestSerializer.instance}')
+		responseInstances.append(await sync_to_async(lambda: RequestPartCreateSerializer(requestSerializer.instance).data)())
+		return responseInstances
+	else:
+		print(f'requestSerializer error: {requestSerializer.errors}')
+		return {'msg': f'{requestSerializer.errors}'}
+
 @api_view(['GET', 'POST', 'PATCH'])
 def requestPart(request, pk=None, type=None):
 	if request.method == 'POST':
@@ -677,42 +745,56 @@ def requestPart(request, pk=None, type=None):
 			region = user.region.name
 			print(f'region:', region)
 			# dicttn = {}
-			partRequestList = [
-				i for i in (list(request.data))
-				if i.startswith('name') or
-					i.startswith('quantity') or
-					i.startswith('others') or
-					i.startswith('reason')
-			]
-			dictOfLists = compartmentalizedList(partRequestList)
-			length = len(dictOfLists)
-			_ = length
-			print(f'dictOfList: {dictOfLists}')
-			print(f'dictOfList length: {length}')
-			responseInstances = []
-			for key in dictOfLists.values():
-				cleanedData = {
-					'name': request.data[key[0]],
-					'quantityRequested': request.data[key[1]],
-					'reason': request.data[key[2]],
-					'fault': None if (request.data.get('fault') == 'null' or request.data.get('fault') == 'undefined') else request.data.get('fault'),
-				}
-				print(f'cleanedData: {cleanedData}')
-				cleanedData['user'] = request.data['user']
-				print(f'cleanedData: {cleanedData}')
-				requestSerializer = await sync_to_async(lambda: RequestPartCreateSerializer(data=cleanedData))()
-				print(f'requestSerializer is valid: {await sync_to_async(requestSerializer.is_valid)()}')
-				if await sync_to_async(requestSerializer.is_valid)():
-					print(f'requestSerializer is valid')
-					await sync_to_async(requestSerializer.save)()
-					print(f'requestSerializer saved #################')
-					print(f'requestSerializer saved instance: {requestSerializer.instance}')
-					responseInstances.append(await sync_to_async(lambda: RequestPartReadSerializer(requestSerializer.instance).data)())
-				else:
-					print(f'requestSerializer error: {requestSerializer.errors}')
+			responseInstances = None
+			if request.data.get('mobile'):
+				response = request.data['name']
+				print('mobile request #################')
+				responseInstances = await savePartRequest(request.data)
+				print('Response Instances:', json.dumps(responseInstances, indent=4))
+				if 'msg' in responseInstances:
+					return Response(responseInstances, status=status.HTTP_400_BAD_REQUEST)
+			else:
+				partRequestList = [
+					i for i in (list(request.data))
+					if i.startswith('name') or
+						i.startswith('quantity') or
+						i.startswith('others') or
+						i.startswith('reason')
+				]
+				dictOfLists = compartmentalizedList(partRequestList)
+				length = len(dictOfLists)
+				_ = length
+				print(f'dictOfList: {dictOfLists}')
+				print(f'dictOfList length: {length}')
+				responseInstances = []
+				for key in dictOfLists.values():
+					cleanedData = {
+						'name': request.data[key[0]],
+						'quantityRequested': request.data[key[1]],
+						'reason': request.data[key[2]],
+						'fault': None if (request.data.get('fault') == 'null' or request.data.get('fault') == 'undefined') else request.data.get('fault'),
+					}
+					print(f'cleanedData: {cleanedData}')
+					cleanedData['user'] = request.data['user']
+					print(f'cleanedData: {cleanedData}')
+					requestSerializer = await sync_to_async(lambda: RequestPartCreateSerializer(data=cleanedData))()
+					print(f'requestSerializer is valid: {await sync_to_async(requestSerializer.is_valid)()}')
+					if await sync_to_async(requestSerializer.is_valid)():
+						print(f'requestSerializer is valid')
+						await sync_to_async(requestSerializer.save)()
+						print(f'requestSerializer saved #################')
+						print(f'requestSerializer saved instance: {requestSerializer.instance}')
+						responseInstances.append(await sync_to_async(lambda: RequestPartReadSerializer(requestSerializer.instance).data)())
+					else:
+						print(f'requestSerializer error: {requestSerializer.errors}')
+				if _ > 1:
+					response = 'Requests'
+				elif cleanedData:
+					response = f'{cleanedData["name"]} Request'
+				print(f'length of requests: {_}')
 			print('################# end requestPart #################')
-			response = 'Requests' if _ > 1 else f'{cleanedData["name"]} Request'
-			print(f'length of requests: {_}')
+			# response = 'Requests' if _ > 1 else f'{cleanedData["name"]} Request'
+			# print(f'length of requests: {_}')
 			print(f'len responseInstances: {len(responseInstances)}')
 			print(f'response: {response}')
 			print('start send_notification ##########')
@@ -1751,3 +1833,40 @@ def allRequestsOnly(request, pk=None, type=None):
 	paginatedRequest = partRequestPaginator.paginate_queryset(combinedSerializedItems, request)
 	print('################# end user unapprovedWorkshopRequests noti #################')
 	return partRequestPaginator.get_paginated_response(paginatedRequest)
+
+@api_view(['GET'])
+def totalAllRequestsOnly(request, pk=None, type=None):
+	async def getTotalAllRequestsOnly():
+		print('##################### getTotalAllRequestsOnly ###########################')
+		print(f'pk: {pk}')
+		user = await sync_to_async(User.objects.get)(pk=pk)
+		partRequests = await sync_to_async(lambda: list(RequestPart.objects.select_related(
+			'fault', 'user'
+		).filter(
+				Q(fault__isnull=True) |
+				(Q(fault__confirm_resolve=False) &	Q(fault__verify_resolve=False)
+			),
+			approved=False,
+			rejected=False
+		)))()
+		componentRequests = await sync_to_async(lambda: list(RequestComponent.objects.select_related(
+			'fault', 'user'
+		).filter(
+				Q(fault__isnull=True) |
+				(Q(fault__confirm_resolve=False) &	Q(fault__verify_resolve=False)
+			),
+			approved=False,
+			rejected=False
+		)))()
+		fixedParts = await sync_to_async(lambda: list(UnconfirmedPart.objects.select_related(
+			'user'
+		).filter(
+			approved=False,
+			rejected=False
+		)))()
+		total = len(componentRequests+partRequests+fixedParts)
+		print(f'total: {total}')
+		# print(f'total count: {len(engineers)}')
+		print('##################### end getTotalAllRequestsOnly ###########################')
+		return Response({'total': total}, status=status.HTTP_200_OK)
+	return async_to_sync(getTotalAllRequestsOnly)()
