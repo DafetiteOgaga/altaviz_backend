@@ -28,6 +28,6 @@ def getAllAccounts(request):
 
 @api_view(['GET'])
 def versionNumber(request):
-    versionDict = {'version': '20250402.0116'}
+    versionDict = {'version': '20250402.0141'}
     print("versionDict: ", versionDict)
     return Response(versionDict, status=status.HTTP_200_OK)
